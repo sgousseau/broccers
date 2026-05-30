@@ -233,10 +233,12 @@ class _HomeShellState extends State<HomeShell> {
       MenuScreen(api: widget.api),
       ShoppingScreen(api: widget.api),
       QuestionScreen(api: widget.api),
+      JournalScreen(api: widget.api),
+      CostsScreen(api: widget.api),
     ];
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Broccers'),
+        title: const Text('Le Broc'),
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
@@ -254,11 +256,14 @@ class _HomeShellState extends State<HomeShell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
+        labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.groups), label: 'Personnel'),
           NavigationDestination(icon: Icon(Icons.menu_book), label: 'Carte'),
           NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Courses'),
           NavigationDestination(icon: Icon(Icons.psychology), label: 'Question'),
+          NavigationDestination(icon: Icon(Icons.fact_check), label: 'Journal'),
+          NavigationDestination(icon: Icon(Icons.euro), label: 'Coûts'),
         ],
       ),
     );
@@ -434,6 +439,189 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
       success: (data) {
         if (data['type'] == 'success') {
           _snack('Rôle changé en $choice ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _editWeekly(Map<String, dynamic> emp) async {
+    final roles = ((emp['roles'] as List<dynamic>?) ?? const []).cast<String>();
+    if (roles.isEmpty) {
+      _snack('Pas de rôles configurés', isError: true);
+      return;
+    }
+    final initialWeekly = (emp['weekly_default'] as Map<String, dynamic>?) ?? const {};
+    final selection = <int, String?>{
+      for (var d = 1; d <= 7; d++) d: initialWeekly[d.toString()] as String?,
+    };
+    final days = const [
+      (1, 'Lundi'),
+      (2, 'Mardi'),
+      (3, 'Mercredi'),
+      (4, 'Jeudi'),
+      (5, 'Vendredi'),
+      (6, 'Samedi'),
+      (7, 'Dimanche'),
+    ];
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        return AlertDialog(
+          title: Text('Planning hebdo — ${emp['name']}'),
+          content: SizedBox(
+            width: 360,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Pour chaque jour, le rôle par défaut (vide = défaut employé / résolution auto)',
+                    style: TextStyle(fontSize: 11, color: BrocBrand.brocCream),
+                  ),
+                  const SizedBox(height: 12),
+                  for (final d in days)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          SizedBox(
+                            width: 90,
+                            child: Text(d.$2, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          Expanded(
+                            child: DropdownButton<String?>(
+                              isExpanded: true,
+                              value: selection[d.$1],
+                              hint: const Text('— aucun —'),
+                              items: [
+                                const DropdownMenuItem<String?>(value: null, child: Text('— aucun —')),
+                                for (final r in roles)
+                                  DropdownMenuItem<String?>(value: r, child: Text(r)),
+                              ],
+                              onChanged: (v) => set(() => selection[d.$1] = v),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Enregistrer')),
+          ],
+        );
+      }),
+    );
+    if (ok != true) return;
+    final scheduleArg = selection.entries
+        .where((e) => e.value != null)
+        .map((e) => '${e.key}=${e.value}')
+        .join(',');
+    if (scheduleArg.isEmpty) {
+      _snack('Aucun jour sélectionné — rien à enregistrer');
+      return;
+    }
+    final r = await widget.api.command(
+      'employee set-weekly --employee ${emp['id']} --schedule $scheduleArg --actor manager:seb',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Planning hebdo sauvegardé ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _editRoles(Map<String, dynamic> emp) async {
+    final currentRoles = ((emp['roles'] as List<dynamic>?) ?? const [])
+        .cast<String>()
+        .toSet();
+    String? defaultRole = emp['default_role'] as String?;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        return AlertDialog(
+          title: Text('Rôles — ${emp['name']}'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Capabilities (cocher) :', style: TextStyle(fontSize: 11)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final r in const [
+                      'manager', 'server', 'runner', 'cook', 'bartender', 'dishwasher', 'host',
+                    ])
+                      FilterChip(
+                        label: Text(r),
+                        selected: currentRoles.contains(r),
+                        onSelected: (v) => set(() {
+                          if (v) {
+                            currentRoles.add(r);
+                          } else {
+                            currentRoles.remove(r);
+                            if (defaultRole == r) defaultRole = null;
+                          }
+                        }),
+                        selectedColor: BrocBrand.brocRed,
+                        checkmarkColor: BrocBrand.brocCream,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Rôle par défaut :', style: TextStyle(fontSize: 11)),
+                DropdownButton<String>(
+                  value: currentRoles.contains(defaultRole) ? defaultRole : null,
+                  hint: const Text('Auto'),
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('Auto')),
+                    for (final r in currentRoles)
+                      DropdownMenuItem<String>(value: r, child: Text(r)),
+                  ],
+                  onChanged: (v) => set(() => defaultRole = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(
+              onPressed: currentRoles.isEmpty ? null : () => Navigator.pop(context, true),
+              child: const Text('Enregistrer'),
+            ),
+          ],
+        );
+      }),
+    );
+    if (ok != true || currentRoles.isEmpty) return;
+    final rolesArg = currentRoles.join(',');
+    final defaultArg = defaultRole != null ? ' --default-role $defaultRole' : '';
+    final r = await widget.api.command(
+      'employee set-roles --employee ${emp['id']} --roles $rolesArg$defaultArg --actor manager:seb',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Rôles mis à jour ✓');
           _refresh();
         } else {
           _snack(data['message']?.toString() ?? 'erreur', isError: true);
@@ -701,6 +889,26 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                             tooltip: 'Plus d\'actions',
                             icon: const Icon(Icons.more_vert),
                             itemBuilder: (_) => [
+                              const PopupMenuItem<String>(
+                                value: 'weekly',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.calendar_month, size: 18, color: Colors.purpleAccent),
+                                    SizedBox(width: 8),
+                                    Text('Planning hebdo'),
+                                  ],
+                                ),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'roles',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.checklist, size: 18, color: BrocBrand.brocYellow),
+                                    SizedBox(width: 8),
+                                    Text('Modifier les rôles'),
+                                  ],
+                                ),
+                              ),
                               PopupMenuItem<String>(
                                 value: 'archive',
                                 enabled: !onShift,
@@ -715,6 +923,8 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                             ],
                             onSelected: (v) {
                               if (v == 'archive') _archiveEmployee(id);
+                              if (v == 'weekly') _editWeekly(e);
+                              if (v == 'roles') _editRoles(e);
                             },
                           ),
                         ]),
@@ -1168,5 +1378,570 @@ class _QuestionScreenState extends State<QuestionScreen> {
               ),
       ),
     ]);
+  }
+}
+
+// ===========================================================================
+// Journal (observability bienveillante)
+// ===========================================================================
+class JournalScreen extends StatefulWidget {
+  final BrWebApi api;
+  const JournalScreen({super.key, required this.api});
+  @override
+  State<JournalScreen> createState() => _JournalScreenState();
+}
+
+class _JournalScreenState extends State<JournalScreen> {
+  List<Map<String, dynamic>> _events = [];
+  String? _filterActor;
+  String? _filterAction;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    final args = <String>['events list --limit 200'];
+    if (_filterActor != null && _filterActor!.isNotEmpty) {
+      args.add('--actor "$_filterActor"');
+    }
+    if (_filterAction != null && _filterAction!.isNotEmpty) {
+      args.add('--action $_filterAction');
+    }
+    final r = await widget.api.command(args.join(' '));
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _events = ((data['result']['events'] as List<dynamic>?) ?? const [])
+              .cast<Map<String, dynamic>>();
+        }
+        setState(() => _loading = false);
+      },
+      failure: (_) => setState(() => _loading = false),
+    );
+  }
+
+  static IconData _iconFor(String action) {
+    if (action.startsWith('shift.')) return Icons.access_time;
+    if (action.startsWith('segment.')) return Icons.swap_horiz;
+    if (action.startsWith('break.')) return Icons.local_cafe;
+    if (action.startsWith('employee.')) return Icons.person;
+    if (action.startsWith('hourly_rate')) return Icons.euro;
+    if (action.startsWith('staff_consumption')) return Icons.fastfood;
+    if (action.startsWith('menu_card.')) return Icons.menu_book;
+    if (action.startsWith('shopping_item.')) return Icons.shopping_cart;
+    if (action.startsWith('question.')) return Icons.psychology;
+    return Icons.bolt;
+  }
+
+  static Color _colorFor(String action) {
+    if (action.contains('compliance')) return Colors.orange;
+    if (action.contains('archive')) return Colors.redAccent;
+    if (action.contains('role_changed') || action.contains('weekly_changed')) {
+      return Colors.purpleAccent;
+    }
+    if (action.contains('started')) return Colors.greenAccent;
+    if (action.contains('ended') || action.contains('closed')) return Colors.redAccent;
+    return BrocBrand.brocYellow;
+  }
+
+  static String _fmtTime(String iso) {
+    try {
+      final d = DateTime.parse(iso).toLocal();
+      return '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')} '
+          '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return iso;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.small(
+        onPressed: _refresh,
+        tooltip: 'Rafraîchir',
+        child: const Icon(Icons.refresh),
+      ),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Acteur (ex: manager:seb)',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (v) {
+                      _filterActor = v.trim().isEmpty ? null : v.trim();
+                      _refresh();
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: TextField(
+                    decoration: const InputDecoration(
+                      labelText: 'Action (ex: shift.started)',
+                      isDense: true,
+                      border: OutlineInputBorder(),
+                    ),
+                    onSubmitted: (v) {
+                      _filterAction = v.trim().isEmpty ? null : v.trim();
+                      _refresh();
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              children: [
+                Text('${_events.length} événements',
+                    style: const TextStyle(color: BrocBrand.brocYellow, fontSize: 12)),
+                const Spacer(),
+                if (_filterActor != null || _filterAction != null)
+                  TextButton(
+                    onPressed: () {
+                      _filterActor = null;
+                      _filterAction = null;
+                      _refresh();
+                    },
+                    child: const Text('Effacer filtres'),
+                  ),
+              ],
+            ),
+          ),
+          const Divider(height: 1),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _events.isEmpty
+                    ? const Center(child: Text('Aucun événement.'))
+                    : ListView.builder(
+                        itemCount: _events.length,
+                        itemBuilder: (_, i) {
+                          final e = _events[i];
+                          final action = e['action'] as String;
+                          final actor = e['actor'] as String;
+                          final target = e['target'] as String?;
+                          final reason = e['reason'] as String?;
+                          final payload = e['payload'] as Map<String, dynamic>? ?? const {};
+                          final summary = _summarizePayload(payload);
+                          return ListTile(
+                            dense: true,
+                            leading: Icon(_iconFor(action), color: _colorFor(action)),
+                            title: Text('$actor → $action',
+                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${_fmtTime(e['at'] as String)}  ${target ?? ""}',
+                                  style: const TextStyle(fontSize: 11, color: Color(0xff9ca3af)),
+                                ),
+                                if (summary.isNotEmpty)
+                                  Text(summary,
+                                      style: const TextStyle(fontSize: 11)),
+                                if (reason != null && reason.isNotEmpty)
+                                  Text('« $reason »',
+                                      style: const TextStyle(
+                                          fontStyle: FontStyle.italic,
+                                          fontSize: 11,
+                                          color: BrocBrand.brocYellow)),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _summarizePayload(Map<String, dynamic> p) {
+    if (p.isEmpty) return '';
+    final keys = ['from_role', 'to_role', 'role', 'rate_cents', 'amount_cents', 'label', 'duration_minutes'];
+    final parts = <String>[];
+    for (final k in keys) {
+      if (p.containsKey(k) && p[k] != null) {
+        parts.add('$k=${p[k]}');
+      }
+    }
+    return parts.join(' · ');
+  }
+}
+
+// ===========================================================================
+// Coûts (taux horaires + conso staff + total jour)
+// ===========================================================================
+class CostsScreen extends StatefulWidget {
+  final BrWebApi api;
+  const CostsScreen({super.key, required this.api});
+  @override
+  State<CostsScreen> createState() => _CostsScreenState();
+}
+
+class _CostsScreenState extends State<CostsScreen> {
+  List<Map<String, dynamic>> _employees = [];
+  List<Map<String, dynamic>> _rates = [];
+  List<Map<String, dynamic>> _consumptions = [];
+  int _totalConsumptionCents = 0;
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    final empR = await widget.api.get('/api/employees');
+    final ratesR = await widget.api.command('rate list');
+    final consR = await widget.api.command('consumption list');
+    if (!mounted) return;
+    setState(() {
+      _employees = empR.valueOrNull == null
+          ? []
+          : (empR.valueOrNull!['employees'] as List<dynamic>).cast<Map<String, dynamic>>();
+      if (ratesR.valueOrNull?['type'] == 'success') {
+        _rates = ((ratesR.valueOrNull!['result']['rates'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+      }
+      if (consR.valueOrNull?['type'] == 'success') {
+        final result = consR.valueOrNull!['result'] as Map<String, dynamic>;
+        _consumptions = ((result['items'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+        _totalConsumptionCents = result['total_cents'] as int? ?? 0;
+      }
+      _loading = false;
+    });
+  }
+
+  void _snack(String s, {bool isError = false}) {
+    final m = isError ? translateErrorFr(s) : s;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(m),
+      backgroundColor: isError ? Colors.red.shade900 : null,
+    ));
+  }
+
+  String _empName(String id) {
+    final e = _employees.where((x) => x['id'] == id).firstOrNull;
+    return e?['name'] as String? ?? id;
+  }
+
+  static String _fmtCents(int c) {
+    final euros = c ~/ 100;
+    final cents = c % 100;
+    return cents == 0
+        ? '$euros €'
+        : '$euros,${cents.toString().padLeft(2, '0')} €';
+  }
+
+  Future<void> _setRate() async {
+    if (_employees.isEmpty) return;
+    String? empId = _employees.first['id'] as String;
+    String? role;
+    final centsCtrl = TextEditingController(text: '1500');
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        final emp = _employees.firstWhere((x) => x['id'] == empId);
+        final roles = ((emp['roles'] as List<dynamic>?) ?? const []).cast<String>();
+        return AlertDialog(
+          title: const Text('Définir un taux horaire'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Employé :', style: TextStyle(fontSize: 11)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: empId,
+                  items: _employees
+                      .map((e) => DropdownMenuItem<String>(
+                          value: e['id'] as String,
+                          child: Text(e['name'] as String)))
+                      .toList(),
+                  onChanged: (v) => set(() {
+                    empId = v;
+                    role = null;
+                  }),
+                ),
+                const SizedBox(height: 8),
+                const Text('Rôle (vide = tous) :', style: TextStyle(fontSize: 11)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: role,
+                  hint: const Text('Tous rôles'),
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('Tous rôles (global)')),
+                    for (final r in roles)
+                      DropdownMenuItem<String>(value: r, child: Text(r)),
+                  ],
+                  onChanged: (v) => set(() => role = v),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: centsCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Taux (en centimes — 1500 = 15 €/h)',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Définir')),
+          ],
+        );
+      }),
+    );
+    if (ok != true) return;
+    final cents = int.tryParse(centsCtrl.text);
+    if (cents == null || cents <= 0) {
+      _snack('Montant invalide', isError: true);
+      return;
+    }
+    final roleArg = role != null ? ' --role $role' : '';
+    final r = await widget.api.command(
+      'rate set --employee $empId --cents $cents$roleArg --actor manager:seb',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Taux défini ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _recordConsumption() async {
+    if (_employees.isEmpty) return;
+    String? empId = _employees.first['id'] as String;
+    final labelCtrl = TextEditingController();
+    final centsCtrl = TextEditingController(text: '300');
+    bool paid = false;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        return AlertDialog(
+          title: const Text('Enregistrer une consommation staff'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Employé :', style: TextStyle(fontSize: 11)),
+                DropdownButton<String>(
+                  isExpanded: true,
+                  value: empId,
+                  items: _employees
+                      .map((e) => DropdownMenuItem<String>(
+                          value: e['id'] as String,
+                          child: Text(e['name'] as String)))
+                      .toList(),
+                  onChanged: (v) => set(() => empId = v),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: labelCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Article (ex: café, demi, plat du jour)',
+                  ),
+                  autofocus: true,
+                ),
+                TextField(
+                  controller: centsCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Montant (centimes — 300 = 3 €)',
+                  ),
+                ),
+                CheckboxListTile(
+                  value: paid,
+                  onChanged: (v) => set(() => paid = v ?? false),
+                  title: const Text('Déjà payé (sinon à débiter sur salaire)'),
+                  controlAffinity: ListTileControlAffinity.leading,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Enregistrer')),
+          ],
+        );
+      }),
+    );
+    if (ok != true) return;
+    final cents = int.tryParse(centsCtrl.text);
+    if (cents == null || cents <= 0 || labelCtrl.text.trim().isEmpty) {
+      _snack('Article et montant requis', isError: true);
+      return;
+    }
+    final paidArg = paid ? ' --paid' : '';
+    final r = await widget.api.command(
+      'consumption record --employee $empId --label "${labelCtrl.text}" --cents $cents$paidArg --actor manager:seb',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Conso enregistrée ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'rate',
+            onPressed: _setRate,
+            tooltip: 'Définir un taux horaire',
+            child: const Icon(Icons.euro),
+          ),
+          const SizedBox(height: 8),
+          FloatingActionButton.extended(
+            heroTag: 'cons',
+            onPressed: _recordConsumption,
+            icon: const Icon(Icons.fastfood),
+            label: const Text('Conso staff'),
+          ),
+        ],
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.only(bottom: 200),
+              children: [
+                // Totals
+                Container(
+                  margin: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: BrocBrand.brocRed.withValues(alpha: 0.15),
+                    border: Border.all(color: BrocBrand.brocRed),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Conso staff totale',
+                          style: TextStyle(color: BrocBrand.brocYellow, fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 4),
+                      Text(_fmtCents(_totalConsumptionCents),
+                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 4),
+                      Text('${_consumptions.length} consommations enregistrées',
+                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                    ],
+                  ),
+                ),
+                // Taux horaires
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Text('TAUX HORAIRES',
+                      style: TextStyle(
+                          color: BrocBrand.brocYellow,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                if (_rates.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucun taux défini.\nClique 💶 pour en définir un.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ..._rates.map((r) {
+                    final endStr = r['valid_to'] as String?;
+                    final isCurrent = endStr == null;
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(Icons.euro,
+                          color: isCurrent ? BrocBrand.brocYellow : Colors.grey),
+                      title: Text(
+                        '${_empName(r['employee_id'] as String)}'
+                        '${r['role'] != null ? " · ${r['role']}" : " · tous rôles"}',
+                        style: TextStyle(
+                            fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
+                            color: isCurrent ? null : Colors.grey),
+                      ),
+                      subtitle: Text(
+                        '${_fmtCents(r['rate_cents'] as int)}/h  ·  depuis ${_JournalScreenState._fmtTime(r['valid_from'] as String)}'
+                        '${endStr != null ? "  ·  jusqu'au ${_JournalScreenState._fmtTime(endStr)}" : "  ·  actif"}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    );
+                  }),
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Text('CONSOMMATIONS STAFF',
+                      style: TextStyle(
+                          color: BrocBrand.brocYellow,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                if (_consumptions.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text('Aucune consommation.\nClique « Conso staff » pour enregistrer.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey)),
+                  )
+                else
+                  ..._consumptions.map((c) {
+                    final paid = c['paid'] as bool? ?? false;
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(Icons.fastfood,
+                          color: paid ? Colors.green : Colors.orange),
+                      title: Text(
+                        '${c['label']}  ·  ${_fmtCents(c['amount_cents'] as int)}',
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        '${_empName(c['employee_id'] as String)}  ·  ${_JournalScreenState._fmtTime(c['consumed_at'] as String)}  ·  ${paid ? "payé" : "à débiter"}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    );
+                  }),
+              ],
+            ),
+    );
   }
 }
