@@ -13,22 +13,53 @@ void main() {
   runApp(const BroccersApp());
 }
 
+/// Identité visuelle Broc — Café Broc, 1 Rue du Canal, Villeurbanne (Puces du Canal).
+/// Rouge brique enseigne + crème + jaune chaud (frites/lumière).
+class BrocBrand {
+  static const Color brocRed = Color(0xffc72226); // rouge enseigne CAFÉ
+  static const Color brocRedDeep = Color(0xff8b1a1d); // bordeaux ombre
+  static const Color brocCream = Color(0xfff5ebd6); // blanc cassé devanture
+  static const Color brocYellow = Color(0xfff5c842); // doré frites/lumière
+  static const Color brocGreen = Color(0xff7a8f4e); // vert salade
+  static const Color brocBlack = Color(0xff14100f); // noir charbon
+}
+
 class BroccersApp extends StatelessWidget {
   const BroccersApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Broccers',
+      title: 'Broccers · Le Broc Café',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xffd97706),
+          seedColor: BrocBrand.brocRed,
           brightness: Brightness.dark,
+        ).copyWith(
+          primary: BrocBrand.brocRed,
+          secondary: BrocBrand.brocYellow,
+          surface: const Color(0xff1f1818),
+          surfaceContainerHighest: const Color(0xff2a1f1f),
         ),
-        scaffoldBackgroundColor: const Color(0xff0a0a0f),
+        scaffoldBackgroundColor: BrocBrand.brocBlack,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: BrocBrand.brocRed,
+          foregroundColor: BrocBrand.brocCream,
+        ),
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: BrocBrand.brocYellow,
+          foregroundColor: BrocBrand.brocBlack,
+        ),
+        navigationBarTheme: NavigationBarThemeData(
+          backgroundColor: const Color(0xff1f1818),
+          indicatorColor: BrocBrand.brocRed.withValues(alpha: 0.4),
+          labelTextStyle: WidgetStateProperty.all(
+            const TextStyle(color: BrocBrand.brocCream, fontSize: 11),
+          ),
+        ),
       ),
       home: const _Root(),
     );
@@ -100,15 +131,51 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('🍻', style: TextStyle(fontSize: 64)),
-                const SizedBox(height: 16),
-                const Text('Broccers',
-                    style: TextStyle(
-                        fontSize: 32, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 8),
-                const Text('Gestion brasserie Broc — Villeurbanne',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Color(0xff9ca3af))),
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: BrocBrand.brocRed,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: BrocBrand.brocRed.withValues(alpha: 0.5),
+                        blurRadius: 30,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'CAFÉ',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        color: BrocBrand.brocCream,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Le Broc',
+                  style: TextStyle(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                    color: BrocBrand.brocCream,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                const Text(
+                  'Puces du Canal — Villeurbanne',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: BrocBrand.brocYellow,
+                    fontStyle: FontStyle.italic,
+                    fontSize: 13,
+                  ),
+                ),
                 const SizedBox(height: 40),
                 TextField(
                   controller: _pinCtrl,

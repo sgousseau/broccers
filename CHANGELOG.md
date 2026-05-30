@@ -29,3 +29,36 @@
 - Photos plats (upload + storage).
 - Notifications iPhone PWA (push web).
 - Refactor PinAuth en `sg_pin_auth` partagé entre Broccers + Nono Cook.
+- Promotion `SgEventJournal` vers sg-packages (concept universel observability bienveillante).
+
+### Phase B backlog (taux horaires + consommation staff)
+- `SgHourlyRate` versionné par employé/rôle (changements tracés via journal).
+- `SgStaffConsumption` (repas/boissons consommés par staff, lié optionnellement à un SgMenuItem).
+- Reporting : « coût main d'œuvre du jour », « conso staff de la semaine ».
+
+### Phase C backlog (caméras manager-only)
+- `SgVisionCameraPort` (adapter futur RTSP / ESP32-S3 / SgWindowAgent).
+- `SgFaceRecognitionPort` (probablement cluster Titan).
+- `SgRoleObservation` (caméra observe X à position Y → comparé au rôle assigné, alerte douce au manager si écart).
+
+### Phase D backlog (suggestions Claude — Seb 2026-05-31)
+- **Briefing matinal** : Claude résume planning + tâches du jour au premier clock-in.
+- **Pourboires** : champ tip sur SgShift + équilibrage pot/perso + reporting hebdo.
+- **Heatmap occupation** : grille jour×heure colorée par rôle → repère pics / creux.
+- **Anti-frustration** : alerte bienveillante manager si écart caméra↔rôle assigné.
+- **Onboarding par rôle** : checklist auto par Claude pour nouveau staff.
+
+## [0.2.0-alpha] — 2026-05-31 (en cours)
+
+### Phase A — Multi-rôles dynamique + journal d'événements
+- BREAKING : `SgEmployee.role` (single) → `SgEmployee.roles: Set<SgEmployeeRole>` + `defaultRole` + `weeklyDefault: Map<int, SgEmployeeRole>`.
+- NEW : `SgShiftSegment` (un shift = N segments, chaque segment = rôle + startsAt + endsAt).
+- NEW : `SgEventJournalEntry` (audit log universel — concept SG à promouvoir vers sg-packages).
+- NEW UseCases : `ChangeRoleInShiftUseCase`, `SetWeeklyDefaultUseCase`, `SetEmployeeRolesUseCase`.
+- UPDATED : `ClockInUseCase` résout le rôle (override → weekly[today] → defaultRole → failure) + crée premier segment + log event.
+- UPDATED : `ClockOutUseCase` termine le segment actif + log.
+- SQL migration : `employees.role` → `employees.roles_json` + `default_role` + `weekly_default_json`. Nouvelles tables `shift_segments` + `event_journal`.
+- TestControlServer : `employee set-roles`, `employee set-weekly`, `shift change-role`, `shift segments`, `events list`.
+- REST : `POST /api/employees/<id>/roles`, `POST /api/employees/<id>/weekly`, `POST /api/shifts/<id>/segments`, `GET /api/events`.
+- UI : multi-Chips rôles + planning hebdo grid + journal manager.
+- Philosophie : observability bienveillante (alertes manager only, formulation hypothétique).

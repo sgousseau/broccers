@@ -14,6 +14,7 @@ export 'src/failures.dart';
 // === Entities — Personnel ===
 export 'src/entities/sg_employee.dart';
 export 'src/entities/sg_shift.dart';
+export 'src/entities/sg_shift_segment.dart';
 export 'src/entities/sg_break.dart';
 
 // === Entities — Menu ===
@@ -28,9 +29,10 @@ export 'src/entities/sg_shopping_list.dart';
 export 'src/entities/sg_shopping_item.dart';
 export 'src/entities/sg_supplier.dart';
 
-// === Entities — Question + Kiosk ===
+// === Entities — Question + Kiosk + Journal ===
 export 'src/entities/sg_question.dart';
 export 'src/entities/sg_kiosk_session.dart';
+export 'src/entities/sg_event_journal_entry.dart';
 
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
@@ -48,3 +50,6 @@ export 'src/usecases/export_menu_card_pdf_usecase.dart';
 export 'src/usecases/add_shopping_item_usecase.dart';
 export 'src/usecases/check_shopping_item_usecase.dart';
 export 'src/usecases/ask_question_usecase.dart';
+export 'src/usecases/change_role_in_shift_usecase.dart';
+export 'src/usecases/set_weekly_default_usecase.dart';
+export 'src/usecases/set_employee_roles_usecase.dart';

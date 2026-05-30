@@ -5,18 +5,110 @@ import 'package:test/test.dart';
 
 void main() {
   group('SgEmployee', () {
-    test('toJson/fromJson roundtrip (no hashes)', () {
-      const original = SgEmployee(
+    test('toJson/fromJson roundtrip (multi-roles + weekly)', () {
+      final original = SgEmployee(
         id: 'e-1',
-        name: 'Sandra',
-        role: SgEmployeeRole.server,
+        name: 'Eros',
+        roles: const {SgEmployeeRole.runner, SgEmployeeRole.bartender, SgEmployeeRole.dishwasher},
+        defaultRole: SgEmployeeRole.runner,
+        weeklyDefault: const {
+          SgWeekday.wednesday: SgEmployeeRole.bartender,
+          SgWeekday.thursday: SgEmployeeRole.runner,
+        },
         contractedHours: 35,
-        kioskName: 'Sandra',
+        kioskName: 'Eros',
       );
       final restored = SgEmployee.fromJson(
         jsonDecode(jsonEncode(original.toJson())) as Map<String, dynamic>,
       );
       expect(restored, original);
+      expect(restored.roles, original.roles);
+      expect(restored.weeklyDefault[SgWeekday.wednesday], SgEmployeeRole.bartender);
+    });
+
+    test('resolveRoleFor — weekly wins over default', () {
+      final emp = SgEmployee(
+        id: 'e-1',
+        name: 'Eros',
+        roles: const {SgEmployeeRole.runner, SgEmployeeRole.bartender},
+        defaultRole: SgEmployeeRole.runner,
+        weeklyDefault: const {SgWeekday.wednesday: SgEmployeeRole.bartender},
+        contractedHours: 35,
+        kioskName: 'Eros',
+      );
+      final wed = DateTime(2026, 6, 3);
+      expect(wed.weekday, 3);
+      expect(emp.resolveRoleFor(wed), SgEmployeeRole.bartender);
+      final tue = DateTime(2026, 6, 2);
+      expect(emp.resolveRoleFor(tue), SgEmployeeRole.runner);
+    });
+
+    test('resolveRoleFor — override wins over all', () {
+      final emp = SgEmployee(
+        id: 'e-1',
+        name: 'Eros',
+        roles: const {SgEmployeeRole.runner, SgEmployeeRole.bartender},
+        defaultRole: SgEmployeeRole.runner,
+        weeklyDefault: const {SgWeekday.wednesday: SgEmployeeRole.bartender},
+        contractedHours: 35,
+        kioskName: 'Eros',
+      );
+      final wed = DateTime(2026, 6, 3);
+      expect(
+        emp.resolveRoleFor(wed, override: SgEmployeeRole.runner),
+        SgEmployeeRole.runner,
+      );
+    });
+
+    test('resolveRoleFor — override ignored if not in roles', () {
+      const emp = SgEmployee(
+        id: 'e-1',
+        name: 'Eros',
+        roles: {SgEmployeeRole.runner},
+        defaultRole: SgEmployeeRole.runner,
+        contractedHours: 35,
+        kioskName: 'Eros',
+      );
+      expect(
+        emp.resolveRoleFor(DateTime(2026, 6, 3), override: SgEmployeeRole.bartender),
+        SgEmployeeRole.runner,
+      );
+    });
+  });
+
+  group('SgShiftSegment', () {
+    test('isActive when endedAt null + duration', () {
+      final seg = SgShiftSegment(
+        id: 'seg-1',
+        shiftId: 'sh-1',
+        role: SgEmployeeRole.bartender,
+        startedAt: DateTime(2026, 5, 30, 18),
+        createdBy: 'system',
+      );
+      expect(seg.isActive, true);
+      final closed = seg.end(at: DateTime(2026, 5, 30, 19, 30));
+      expect(closed.isActive, false);
+      expect(closed.duration, const Duration(minutes: 90));
+    });
+  });
+
+  group('SgEventJournalEntry', () {
+    test('toJson preserves all fields', () {
+      final e = SgEventJournalEntry(
+        id: 'evt-1',
+        at: DateTime(2026, 5, 30, 12),
+        actor: 'manager:m-1',
+        action: SgEventActions.segmentRoleChanged,
+        target: 'shift:sh-1',
+        payload: const {'from_role': 'runner', 'to_role': 'bartender'},
+        reason: 'manque de barman',
+      );
+      final restored = SgEventJournalEntry.fromJson(
+        jsonDecode(jsonEncode(e.toJson())) as Map<String, dynamic>,
+      );
+      expect(restored, e);
+      expect(restored.payload['to_role'], 'bartender');
+      expect(restored.reason, 'manque de barman');
     });
   });
 

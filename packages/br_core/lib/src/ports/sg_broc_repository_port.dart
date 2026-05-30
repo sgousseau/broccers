@@ -1,10 +1,12 @@
 import '../entities/sg_break.dart';
 import '../entities/sg_employee.dart';
+import '../entities/sg_event_journal_entry.dart';
 import '../entities/sg_kiosk_session.dart';
 import '../entities/sg_menu_card.dart';
 import '../entities/sg_pdf_export.dart';
 import '../entities/sg_question.dart';
 import '../entities/sg_shift.dart';
+import '../entities/sg_shift_segment.dart';
 import '../entities/sg_shopping_item.dart';
 import '../entities/sg_shopping_list.dart';
 import '../entities/sg_supplier.dart';
@@ -12,7 +14,7 @@ import '../failures.dart';
 import '../result.dart';
 
 /// Repository unifié Broccers. v0.1 : un seul port (simplicité).
-/// v0.2 : splitter en Query/Command (ISP).
+/// v0.3 : splitter en Query/Command (ISP).
 abstract interface class SgBrocRepositoryPort {
   // ============== Employees ==============
   Future<Result<SgEmployee, SgFailure>> createEmployee(SgEmployee e);
@@ -27,6 +29,12 @@ abstract interface class SgBrocRepositoryPort {
   Future<Result<SgShift?, SgFailure>> getShift(String id);
   Future<Result<SgShift?, SgFailure>> getActiveShiftForEmployee(String employeeId);
   Future<Result<List<SgShift>, SgFailure>> listShifts({String? employeeId, DateTime? from, DateTime? to});
+
+  // ============== Shift segments (Phase A — multi-rôles dynamique) ==============
+  Future<Result<SgShiftSegment, SgFailure>> createSegment(SgShiftSegment seg);
+  Future<Result<SgShiftSegment, SgFailure>> updateSegment(SgShiftSegment seg);
+  Future<Result<SgShiftSegment?, SgFailure>> getActiveSegmentForShift(String shiftId);
+  Future<Result<List<SgShiftSegment>, SgFailure>> listSegments(String shiftId);
 
   // ============== Breaks ==============
   Future<Result<SgBreak, SgFailure>> createBreak(SgBreak b);
@@ -67,4 +75,15 @@ abstract interface class SgBrocRepositoryPort {
   // ============== Kiosk sessions ==============
   Future<Result<SgKioskSession, SgFailure>> createKioskSession(SgKioskSession s);
   Future<Result<SgKioskSession?, SgFailure>> getActiveKioskSession(String deviceId);
+
+  // ============== Event journal (Phase A — observability bienveillante) ==============
+  Future<Result<void, SgFailure>> logEvent(SgEventJournalEntry e);
+  Future<Result<List<SgEventJournalEntry>, SgFailure>> listEvents({
+    String? actor,
+    String? action,
+    String? targetPrefix,
+    DateTime? from,
+    DateTime? to,
+    int? limit,
+  });
 }

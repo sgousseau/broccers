@@ -58,6 +58,23 @@ Quand le code se stabilisera, créer un package `sg_pin_auth` partagé (refactor
 - Carte versionnée (`SgMenuCard.version`) — chaque PDF imprimé est dérivé d'une version précise (`sg_derivation`).
 - Stocker les exports PDF dans `~/.broccers/pdf_exports/YYYY/MM/DD/menu_card_<version>.pdf`.
 
+### Observability bienveillante (philosophie inviolable)
+- Tout est tracé (`SgEventJournal`) pour **COMPRENDRE et AMÉLIORER**, jamais pour réprimander.
+- Les alertes vont au **manager**, jamais à l'employé directement.
+- Formulation hypothétique (« semble », « peut-être »), jamais accusatoire.
+- Objectif : comprendre pourquoi on perd du temps, pas qui faute.
+- Toute action manager/employé qui modifie un rôle/shift/segment → log avec `actor`, `action`, `target`, `reason?`.
+
+### Multi-rôles (Phase A — 2026-05-31)
+- `SgEmployee.roles: Set<SgEmployeeRole>` = capabilities (ce que l'employé sait faire)
+- `SgEmployee.defaultRole` = rôle par défaut (fallback)
+- `SgEmployee.weeklyDefault: Map<int weekday, SgEmployeeRole>` = planning hebdo (1=Lun..7=Dim)
+- `SgShift` = présence globale (start/end clock-in/out)
+- `SgShiftSegment` = un rôle tenu sur un intervalle dans un shift. N segments par shift.
+- Au `ClockIn` : résolution `override OR weekly[today] OR defaultRole OR failure` puis crée segment.
+- `ChangeRoleInShift` : end segment actuel + create nouveau + log event.
+- Manager peut tout faire ; employé peut rectifier son propre shift.
+
 ## Workflow dev
 
 ```bash

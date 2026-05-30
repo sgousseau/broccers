@@ -1,11 +1,11 @@
 {
-  "name": "Broccers",
-  "short_name": "Broccers",
+  "name": "Le Broc Café",
+  "short_name": "Broc",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0a0a0f",
-  "theme_color": "#d97706",
-  "description": "Gestion brasserie Broc — Villeurbanne",
+  "background_color": "#14100f",
+  "theme_color": "#c72226",
+  "description": "Gestion Le Broc Café — Puces du Canal, Villeurbanne",
   "orientation": "any",
   "prefer_related_applications": false,
   "icons": []

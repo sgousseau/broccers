@@ -22,6 +22,9 @@ class BrApiRouter {
   final AddShoppingItemUseCase _addShoppingItem;
   final CheckShoppingItemUseCase _checkShoppingItem;
   final AskQuestionUseCase _askQuestion;
+  final ChangeRoleInShiftUseCase _changeRole;
+  final SetWeeklyDefaultUseCase _setWeekly;
+  final SetEmployeeRolesUseCase _setRoles;
 
   BrApiRouter({
     required PinAuthService auth,
@@ -36,6 +39,9 @@ class BrApiRouter {
     required AddShoppingItemUseCase addShoppingItem,
     required CheckShoppingItemUseCase checkShoppingItem,
     required AskQuestionUseCase askQuestion,
+    required ChangeRoleInShiftUseCase changeRole,
+    required SetWeeklyDefaultUseCase setWeekly,
+    required SetEmployeeRolesUseCase setRoles,
   })  : _auth = auth,
         _repo = repository,
         _commands = commandRegistry,
@@ -47,7 +53,10 @@ class BrApiRouter {
         _exportPdf = exportPdf,
         _addShoppingItem = addShoppingItem,
         _checkShoppingItem = checkShoppingItem,
-        _askQuestion = askQuestion;
+        _askQuestion = askQuestion,
+        _changeRole = changeRole,
+        _setWeekly = setWeekly,
+        _setRoles = setRoles;
 
   Handler build() {
     final r = Router();
@@ -63,6 +72,10 @@ class BrApiRouter {
     r.post('/api/command', _handleCommand);
 
     r.get('/api/employees', _withAuth(_listEmployees));
+    r.post('/api/employees/<id>/roles', _withAuthId(_handleSetEmployeeRoles));
+    r.post('/api/employees/<id>/weekly', _withAuthId(_handleSetWeekly));
+    r.post('/api/shifts/change-role', _withAuth(_handleChangeRole));
+    r.get('/api/events', _withAuth(_listEvents));
     r.post('/api/shifts/clock-in', _withAuth(_handleClockIn));
     r.post('/api/shifts/clock-out', _withAuth(_handleClockOut));
     r.post('/api/breaks/start', _withAuth(_handleStartBreak));
@@ -113,16 +126,123 @@ class BrApiRouter {
     final body = await _readJson(req);
     final id = body['employee_id'] as String?;
     if (id == null) return _json(400, {'error': 'employee_id required'});
-    final r = await _clockIn(employeeId: id);
-    return r.when(success: (s) => _json(201, s.toJson()), failure: _failureResponse);
+    SgEmployeeRole? override;
+    if (body['role'] != null) {
+      override = SgEmployeeRole.values
+          .where((r) => r.name == body['role'])
+          .firstOrNull;
+    }
+    final actor = (body['actor'] as String?) ?? 'employee:$id';
+    final reason = body['reason'] as String?;
+    final r = await _clockIn(
+      employeeId: id,
+      roleOverride: override,
+      actor: actor,
+      reason: reason,
+    );
+    return r.when(success: (o) => _json(201, o.toJson()), failure: _failureResponse);
   }
 
   Future<Response> _handleClockOut(Request req) async {
     final body = await _readJson(req);
     final id = body['employee_id'] as String?;
     if (id == null) return _json(400, {'error': 'employee_id required'});
-    final r = await _clockOut(employeeId: id);
-    return r.when(success: (s) => _json(200, s.toJson()), failure: _failureResponse);
+    final actor = (body['actor'] as String?) ?? 'employee:$id';
+    final reason = body['reason'] as String?;
+    final r = await _clockOut(employeeId: id, actor: actor, reason: reason);
+    return r.when(success: (o) => _json(200, o.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _handleChangeRole(Request req) async {
+    final body = await _readJson(req);
+    final id = body['employee_id'] as String?;
+    final roleStr = body['role'] as String?;
+    if (id == null || roleStr == null) {
+      return _json(400, {'error': 'employee_id + role required'});
+    }
+    final newRole = SgEmployeeRole.values.where((r) => r.name == roleStr).firstOrNull;
+    if (newRole == null) return _json(400, {'error': 'unknown role: $roleStr'});
+    final actor = (body['actor'] as String?) ?? 'employee:$id';
+    final reason = body['reason'] as String?;
+    final r = await _changeRole(
+      employeeId: id,
+      newRole: newRole,
+      actor: actor,
+      reason: reason,
+    );
+    return r.when(success: (o) => _json(200, o.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _handleSetEmployeeRoles(Request req, String id) async {
+    final body = await _readJson(req);
+    final rolesArg = body['roles'] as List<dynamic>?;
+    if (rolesArg == null) return _json(400, {'error': 'roles required'});
+    final roles = <SgEmployeeRole>{};
+    for (final r in rolesArg) {
+      final e = SgEmployeeRole.values.where((x) => x.name == r as String).firstOrNull;
+      if (e == null) return _json(400, {'error': 'unknown role: $r'});
+      roles.add(e);
+    }
+    SgEmployeeRole? defaultRole;
+    if (body['default_role'] != null) {
+      defaultRole = SgEmployeeRole.values
+          .where((x) => x.name == body['default_role'])
+          .firstOrNull;
+    }
+    final actor = (body['actor'] as String?) ?? 'manager';
+    final reason = body['reason'] as String?;
+    final r = await _setRoles(
+      employeeId: id,
+      roles: roles,
+      defaultRole: defaultRole,
+      actor: actor,
+      reason: reason,
+    );
+    return r.when(success: (e) => _json(200, e.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _handleSetWeekly(Request req, String id) async {
+    final body = await _readJson(req);
+    final weeklyArg = body['weekly'] as Map<String, dynamic>?;
+    if (weeklyArg == null) return _json(400, {'error': 'weekly required'});
+    final weekly = <SgWeekday, SgEmployeeRole>{};
+    for (final entry in weeklyArg.entries) {
+      final day = int.tryParse(entry.key);
+      if (day == null || day < 1 || day > 7) {
+        return _json(400, {'error': 'weekday must be 1..7: ${entry.key}'});
+      }
+      final role = SgEmployeeRole.values
+          .where((x) => x.name == entry.value as String)
+          .firstOrNull;
+      if (role == null) return _json(400, {'error': 'unknown role: ${entry.value}'});
+      weekly[SgWeekday.fromIso(day)] = role;
+    }
+    final actor = (body['actor'] as String?) ?? 'manager';
+    final reason = body['reason'] as String?;
+    final r = await _setWeekly(
+      employeeId: id,
+      weekly: weekly,
+      actor: actor,
+      reason: reason,
+    );
+    return r.when(success: (e) => _json(200, e.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _listEvents(Request req) async {
+    final q = req.url.queryParameters;
+    final r = await _repo.listEvents(
+      actor: q['actor'],
+      action: q['action'],
+      targetPrefix: q['target_prefix'],
+      limit: int.tryParse(q['limit'] ?? '200'),
+    );
+    return r.when(
+      success: (l) => _json(200, {
+        'count': l.length,
+        'events': l.map((e) => e.toJson()).toList(),
+      }),
+      failure: _failureResponse,
+    );
   }
 
   Future<Response> _handleStartBreak(Request req) async {

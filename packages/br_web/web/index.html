@@ -4,20 +4,42 @@
   <base href="$FLUTTER_BASE_HREF">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="Broccers — Gestion brasserie Broc">
+  <meta name="description" content="Le Broc Café — Gestion brasserie Puces du Canal Villeurbanne">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Broccers">
-  <meta name="theme-color" content="#0a0a0f">
+  <meta name="apple-mobile-web-app-title" content="Le Broc">
+  <meta name="theme-color" content="#c72226">
   <link rel="manifest" href="manifest.json">
-  <title>Broccers</title>
+  <title>Le Broc Café</title>
   <style>
-    body { background: #0a0a0f; color: #f3f4f6; margin: 0; font-family: -apple-system, system-ui, sans-serif; }
-    #loading { display: flex; align-items: center; justify-content: center; height: 100vh; font-size: 1.2rem; opacity: 0.6; }
+    body {
+      background: #14100f;
+      color: #f5ebd6;
+      margin: 0;
+      font-family: -apple-system, system-ui, sans-serif;
+    }
+    #loading {
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      height: 100vh; gap: 1rem;
+    }
+    #loading .badge {
+      background: #c72226;
+      color: #f5ebd6;
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      font-weight: 900;
+      letter-spacing: 2px;
+      box-shadow: 0 4px 20px rgba(199, 34, 38, 0.4);
+    }
+    #loading .text { opacity: 0.6; font-size: 1.1rem; font-style: italic; }
   </style>
 </head>
 <body>
-  <div id="loading">🍻 Broccers…</div>
+  <div id="loading">
+    <div class="badge">CAFÉ</div>
+    <div class="text">Le Broc…</div>
+  </div>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

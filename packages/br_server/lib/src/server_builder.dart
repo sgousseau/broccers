@@ -48,9 +48,31 @@ class BrServerBuilder {
     final clockIn = ClockInUseCase(
       repository: repo,
       clock: clock,
-      idGenerator: () => 'sh-${genId()}',
+      shiftIdGenerator: () => 'sh-${genId()}',
+      segmentIdGenerator: () => 'seg-${genId()}',
+      eventIdGenerator: () => 'evt-${genId()}',
     );
-    final clockOut = ClockOutUseCase(repository: repo, clock: clock);
+    final clockOut = ClockOutUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final changeRole = ChangeRoleInShiftUseCase(
+      repository: repo,
+      clock: clock,
+      segmentIdGenerator: () => 'seg-${genId()}',
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final setWeekly = SetWeeklyDefaultUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final setRoles = SetEmployeeRolesUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
     final startBreak = StartBreakUseCase(
       repository: repo,
       clock: clock,
@@ -91,11 +113,17 @@ class BrServerBuilder {
       addShoppingItem: addShoppingItem,
       checkShoppingItem: checkShoppingItem,
       askQuestion: askQuestion,
+      changeRole: changeRole,
+      setWeekly: setWeekly,
+      setRoles: setRoles,
       uuid: uuid,
       now: now,
     );
 
     final router = BrApiRouter(
+      changeRole: changeRole,
+      setWeekly: setWeekly,
+      setRoles: setRoles,
       auth: auth,
       repository: repo,
       commandRegistry: commands,

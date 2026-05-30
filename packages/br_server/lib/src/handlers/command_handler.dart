@@ -22,6 +22,9 @@ class BrCommandRegistry {
   final AddShoppingItemUseCase _addShoppingItem;
   final CheckShoppingItemUseCase _checkShoppingItem;
   final AskQuestionUseCase _askQuestion;
+  final ChangeRoleInShiftUseCase _changeRole;
+  final SetWeeklyDefaultUseCase _setWeekly;
+  final SetEmployeeRolesUseCase _setRoles;
   final Uuid _uuid;
   final DateTime Function() _now;
 
@@ -39,6 +42,9 @@ class BrCommandRegistry {
     required AddShoppingItemUseCase addShoppingItem,
     required CheckShoppingItemUseCase checkShoppingItem,
     required AskQuestionUseCase askQuestion,
+    required ChangeRoleInShiftUseCase changeRole,
+    required SetWeeklyDefaultUseCase setWeekly,
+    required SetEmployeeRolesUseCase setRoles,
     required Uuid uuid,
     required DateTime Function() now,
   })  : _config = config,
@@ -54,6 +60,9 @@ class BrCommandRegistry {
         _addShoppingItem = addShoppingItem,
         _checkShoppingItem = checkShoppingItem,
         _askQuestion = askQuestion,
+        _changeRole = changeRole,
+        _setWeekly = setWeekly,
+        _setRoles = setRoles,
         _uuid = uuid,
         _now = now;
 
@@ -88,6 +97,8 @@ class BrCommandRegistry {
           return _dispatchQuestion(args);
         case 'supplier':
           return _dispatchSupplier(args);
+        case 'events':
+          return _dispatchEvents(args);
         default:
           return _invalid('unknown command: $group');
       }
@@ -113,21 +124,34 @@ class BrCommandRegistry {
         );
       case 'create':
         final name = _opt(rest, '--name');
-        final role = _opt(rest, '--role');
+        final rolesArg = _opt(rest, '--roles') ?? _opt(rest, '--role');
+        final defaultRoleArg = _opt(rest, '--default-role');
         final hours = double.tryParse(_opt(rest, '--hours') ?? '35');
-        if (name == null || role == null) {
-          return _invalid('employee create --name "..." --role <manager|server|cook|bartender|dishwasher|host>');
+        if (name == null || rolesArg == null) {
+          return _invalid('employee create --name "..." --roles role1,role2,... [--default-role X] [--hours N --kiosk-name "..."]');
         }
-        final roleEnum = SgEmployeeRole.values
-            .where((r) => r.name == role)
-            .firstOrNull;
-        if (roleEnum == null) {
-          return _invalid('unknown role: $role');
+        final roles = <SgEmployeeRole>{};
+        for (final r in rolesArg.split(',')) {
+          final e = SgEmployeeRole.values.where((x) => x.name == r.trim()).firstOrNull;
+          if (e == null) return _invalid('unknown role: ${r.trim()}');
+          roles.add(e);
+        }
+        SgEmployeeRole? defaultRole;
+        if (defaultRoleArg != null) {
+          defaultRole = SgEmployeeRole.values
+              .where((x) => x.name == defaultRoleArg)
+              .firstOrNull;
+          if (defaultRole == null) {
+            return _invalid('unknown default role: $defaultRoleArg');
+          }
+        } else if (roles.length == 1) {
+          defaultRole = roles.first;
         }
         final emp = SgEmployee(
           id: 'emp-${_uuid.v4()}',
           name: name,
-          role: roleEnum,
+          roles: roles,
+          defaultRole: defaultRole,
           contractedHours: hours ?? 35,
           kioskName: _opt(rest, '--kiosk-name') ?? name,
         );
@@ -141,9 +165,83 @@ class BrCommandRegistry {
               e == null ? _failure('not found') : _success(e.toJson()),
           failure: _failureOf,
         );
+      case 'set-roles':
+        final empId = _opt(rest, '--employee');
+        final rolesArg = _opt(rest, '--roles');
+        final defaultRoleArg = _opt(rest, '--default-role');
+        final actor = _opt(rest, '--actor') ?? 'manager';
+        final reason = _opt(rest, '--reason');
+        if (empId == null || rolesArg == null) {
+          return _invalid('employee set-roles --employee <id> --roles a,b,c [--default-role X --actor manager:<id> --reason "..."]');
+        }
+        final roles = <SgEmployeeRole>{};
+        for (final r in rolesArg.split(',')) {
+          final e = SgEmployeeRole.values.where((x) => x.name == r.trim()).firstOrNull;
+          if (e == null) return _invalid('unknown role: ${r.trim()}');
+          roles.add(e);
+        }
+        SgEmployeeRole? defaultRole;
+        if (defaultRoleArg != null) {
+          defaultRole = SgEmployeeRole.values
+              .where((x) => x.name == defaultRoleArg)
+              .firstOrNull;
+        }
+        final r = await _setRoles(
+          employeeId: empId,
+          roles: roles,
+          defaultRole: defaultRole,
+          actor: actor,
+          reason: reason,
+        );
+        return r.when(success: (e) => _success(e.toJson()), failure: _failureOf);
+      case 'set-weekly':
+        final empId = _opt(rest, '--employee');
+        final scheduleArg = _opt(rest, '--schedule');
+        final actor = _opt(rest, '--actor') ?? 'manager';
+        final reason = _opt(rest, '--reason');
+        if (empId == null || scheduleArg == null) {
+          return _invalid('employee set-weekly --employee <id> --schedule mon=runner,wed=bartender,thu=server [--actor manager:<id>]');
+        }
+        final weekly = <SgWeekday, SgEmployeeRole>{};
+        for (final pair in scheduleArg.split(',')) {
+          final parts = pair.split('=');
+          if (parts.length != 2) {
+            return _invalid('schedule entries must be day=role : got "$pair"');
+          }
+          final day = _parseWeekday(parts[0].trim());
+          final role = SgEmployeeRole.values
+              .where((x) => x.name == parts[1].trim())
+              .firstOrNull;
+          if (day == null) return _invalid('unknown day: ${parts[0]}');
+          if (role == null) return _invalid('unknown role: ${parts[1]}');
+          weekly[day] = role;
+        }
+        final r = await _setWeekly(
+          employeeId: empId,
+          weekly: weekly,
+          actor: actor,
+          reason: reason,
+        );
+        return r.when(success: (e) => _success(e.toJson()), failure: _failureOf);
       default:
         return _invalid('employee: unknown sub "$sub"');
     }
+  }
+
+  static SgWeekday? _parseWeekday(String s) {
+    final low = s.toLowerCase();
+    return switch (low) {
+      'mon' || 'lun' || 'monday' || 'lundi' => SgWeekday.monday,
+      'tue' || 'mar' || 'tuesday' || 'mardi' => SgWeekday.tuesday,
+      'wed' || 'mer' || 'wednesday' || 'mercredi' => SgWeekday.wednesday,
+      'thu' || 'jeu' || 'thursday' || 'jeudi' => SgWeekday.thursday,
+      'fri' || 'ven' || 'friday' || 'vendredi' => SgWeekday.friday,
+      'sat' || 'sam' || 'saturday' || 'samedi' => SgWeekday.saturday,
+      'sun' || 'dim' || 'sunday' || 'dimanche' => SgWeekday.sunday,
+      _ => int.tryParse(low) != null && int.parse(low) >= 1 && int.parse(low) <= 7
+          ? SgWeekday.fromIso(int.parse(low))
+          : null,
+    };
   }
 
   // shift
@@ -154,13 +252,59 @@ class BrCommandRegistry {
     final emp = _opt(rest, '--employee');
     switch (sub) {
       case 'clock-in':
-        if (emp == null) return _invalid('shift clock-in --employee <id>');
-        final r = await _clockIn(employeeId: emp);
-        return r.when(success: (s) => _success(s.toJson()), failure: _failureOf);
+        if (emp == null) return _invalid('shift clock-in --employee <id> [--role X --actor employee:<id> --reason "..."]');
+        SgEmployeeRole? override;
+        final overrideArg = _opt(rest, '--role');
+        if (overrideArg != null) {
+          override = SgEmployeeRole.values
+              .where((x) => x.name == overrideArg)
+              .firstOrNull;
+          if (override == null) return _invalid('unknown role: $overrideArg');
+        }
+        final actor = _opt(rest, '--actor') ?? 'employee:$emp';
+        final reason = _opt(rest, '--reason');
+        final r = await _clockIn(
+          employeeId: emp,
+          roleOverride: override,
+          actor: actor,
+          reason: reason,
+        );
+        return r.when(success: (o) => _success(o.toJson()), failure: _failureOf);
       case 'clock-out':
         if (emp == null) return _invalid('shift clock-out --employee <id>');
-        final r = await _clockOut(employeeId: emp);
-        return r.when(success: (s) => _success(s.toJson()), failure: _failureOf);
+        final actor = _opt(rest, '--actor') ?? 'employee:$emp';
+        final reason = _opt(rest, '--reason');
+        final r = await _clockOut(employeeId: emp, actor: actor, reason: reason);
+        return r.when(success: (o) => _success(o.toJson()), failure: _failureOf);
+      case 'change-role':
+        final newRoleArg = _opt(rest, '--role');
+        if (emp == null || newRoleArg == null) {
+          return _invalid('shift change-role --employee <id> --role X [--actor employee:<id>|manager:<id> --reason "..."]');
+        }
+        final newRole = SgEmployeeRole.values
+            .where((x) => x.name == newRoleArg)
+            .firstOrNull;
+        if (newRole == null) return _invalid('unknown role: $newRoleArg');
+        final actor = _opt(rest, '--actor') ?? 'employee:$emp';
+        final reason = _opt(rest, '--reason');
+        final r = await _changeRole(
+          employeeId: emp,
+          newRole: newRole,
+          actor: actor,
+          reason: reason,
+        );
+        return r.when(success: (o) => _success(o.toJson()), failure: _failureOf);
+      case 'segments':
+        final shiftId = _opt(rest, '--shift');
+        if (shiftId == null) return _invalid('shift segments --shift <id>');
+        final r = await _repo.listSegments(shiftId);
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'segments': l.map((s) => s.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
       case 'active':
         if (emp == null) return _invalid('shift active --employee <id>');
         final r = await _repo.getActiveShiftForEmployee(emp);
@@ -377,6 +521,35 @@ class BrCommandRegistry {
         return r.when(success: (i) => _success(i.toJson()), failure: _failureOf);
       default:
         return _invalid('shopping: unknown sub "$sub"');
+    }
+  }
+
+  // events
+  Future<Map<String, dynamic>> _dispatchEvents(List<String> args) async {
+    if (args.isEmpty) return _invalid('events <sub>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'list':
+        final actor = _opt(rest, '--actor');
+        final action = _opt(rest, '--action');
+        final target = _opt(rest, '--target-prefix');
+        final limit = int.tryParse(_opt(rest, '--limit') ?? '50');
+        final r = await _repo.listEvents(
+          actor: actor,
+          action: action,
+          targetPrefix: target,
+          limit: limit,
+        );
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'events': l.map((e) => e.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      default:
+        return _invalid('events: unknown sub "$sub"');
     }
   }
 
