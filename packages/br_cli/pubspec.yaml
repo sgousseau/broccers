@@ -1,0 +1,20 @@
+name: br_cli
+description: Broccers — CLI br (auth, employee, shift, break, menu, shopping, ask, print). MIGRATE LATER to sg_cli.
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  br_core:
+    path: ../br_core
+  args: ^2.5.0
+  http: ^1.2.2
+  meta: ^1.16.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

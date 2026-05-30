@@ -1,0 +1,36 @@
+name: broccers
+repository: https://github.com/sgousseau/broccers
+
+packages:
+  - packages/*
+
+command:
+  version:
+    message: "release: v{version}+{build}"
+  bootstrap:
+    usePubspecOverrides: true
+
+scripts:
+  analyze:
+    run: dart analyze --fatal-infos .
+    exec:
+      concurrency: 4
+    packageFilters:
+      dirExists: lib
+  test:
+    run: dart test
+    exec:
+      concurrency: 3
+      failFast: true
+    packageFilters:
+      dirExists: test
+  format:
+    run: dart format .
+    exec:
+      concurrency: 4
+  server:
+    description: "Run br_server"
+    run: dart run packages/br_server/bin/server.dart
+  web:
+    description: "Run br_web Flutter dev"
+    run: flutter run -d chrome --target packages/br_web/lib/main.dart

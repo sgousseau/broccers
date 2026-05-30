@@ -1,0 +1,12 @@
+name: broccers
+description: Broccers — Gestion brasserie Broc (Villeurbanne). Personnel + carte + courses + IA. SG Framework compliant.
+publish_to: none
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+workspace:
+  - packages/br_core
+  - packages/br_server
+  - packages/br_web
+  - packages/br_cli

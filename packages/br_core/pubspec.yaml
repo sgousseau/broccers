@@ -1,0 +1,16 @@
+name: br_core
+description: Broccers — Domain pur (entities, ports, usecases, failures). Pure Dart, zéro dep Flutter.
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  meta: ^1.16.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

@@ -1,0 +1,637 @@
+import 'dart:convert';
+
+import 'package:br_core/br_core.dart';
+import 'package:sqlite3/sqlite3.dart';
+
+class SqliteBrocRepository implements SgBrocRepositoryPort {
+  final Database _db;
+
+  SqliteBrocRepository._(this._db);
+
+  factory SqliteBrocRepository.open({required String dbPath}) {
+    final db = sqlite3.open(dbPath);
+    db.execute('PRAGMA journal_mode = WAL;');
+    db.execute('PRAGMA foreign_keys = ON;');
+    _migrate(db);
+    return SqliteBrocRepository._(db);
+  }
+
+  Database get db => _db;
+
+  static void _migrate(Database db) {
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS employees (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        role TEXT NOT NULL,
+        contracted_hours REAL NOT NULL,
+        kiosk_name TEXT NOT NULL,
+        personal_pin_hash TEXT,
+        kiosk_pin_hash TEXT,
+        active INTEGER NOT NULL DEFAULT 1
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS shifts (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        starts_at TEXT NOT NULL,
+        ends_at TEXT,
+        planned_ends_at TEXT,
+        position TEXT NOT NULL,
+        status TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS breaks (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        shift_id TEXT NOT NULL REFERENCES shifts(id) ON DELETE CASCADE,
+        type TEXT NOT NULL,
+        started_at TEXT NOT NULL,
+        ended_at TEXT,
+        expected_duration_ms INTEGER NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS menu_cards (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        version INTEGER NOT NULL,
+        created_at TEXT NOT NULL,
+        published_at TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS menu_categories (
+        id TEXT PRIMARY KEY,
+        card_id TEXT NOT NULL REFERENCES menu_cards(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        sort_order INTEGER NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS menu_items (
+        id TEXT PRIMARY KEY,
+        card_id TEXT NOT NULL REFERENCES menu_cards(id) ON DELETE CASCADE,
+        category_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        description TEXT,
+        price_cents INTEGER NOT NULL,
+        available INTEGER NOT NULL DEFAULT 1,
+        allergens_json TEXT NOT NULL DEFAULT '[]',
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS pdf_exports (
+        id TEXT PRIMARY KEY,
+        card_id TEXT NOT NULL,
+        card_version INTEGER NOT NULL,
+        rendered_at TEXT NOT NULL,
+        file_path TEXT NOT NULL,
+        byte_size INTEGER NOT NULL,
+        engine TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS suppliers (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        contact TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS shopping_lists (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        status TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS shopping_items (
+        id TEXT PRIMARY KEY,
+        list_id TEXT NOT NULL REFERENCES shopping_lists(id) ON DELETE CASCADE,
+        supplier_id TEXT REFERENCES suppliers(id) ON DELETE SET NULL,
+        name TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unit TEXT NOT NULL,
+        urgent INTEGER NOT NULL DEFAULT 0,
+        done INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        checked_at TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS questions (
+        id TEXT PRIMARY KEY,
+        asked_at TEXT NOT NULL,
+        question TEXT NOT NULL,
+        context_snapshot_json TEXT NOT NULL,
+        answer TEXT,
+        engine TEXT NOT NULL,
+        answered_at TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS kiosk_sessions (
+        id TEXT PRIMARY KEY,
+        device_id TEXT NOT NULL,
+        device_label TEXT,
+        started_at TEXT NOT NULL,
+        expires_at TEXT NOT NULL,
+        created_by TEXT NOT NULL
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_shifts_employee ON shifts(employee_id, status);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_breaks_employee ON breaks(employee_id, ended_at);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_menu_items_card ON menu_items(card_id, category_id, sort_order);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_shopping_items_list ON shopping_items(list_id, done);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_kiosk_device ON kiosk_sessions(device_id, expires_at);');
+  }
+
+  Result<T, SgFailure> _wrap<T>(T Function() fn) {
+    try {
+      return Success(fn());
+    } on SqliteException catch (e) {
+      return Failure(SgDatabaseFailure('sqlite: ${e.message}', cause: e));
+    }
+  }
+
+  // ============== Employees ==============
+  @override
+  Future<Result<SgEmployee, SgFailure>> createEmployee(SgEmployee e) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO employees(id, name, role, contracted_hours, kiosk_name, personal_pin_hash, kiosk_pin_hash, active) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [e.id, e.name, e.role.name, e.contractedHours, e.kioskName, e.personalPinHash, e.kioskPinHash, e.active ? 1 : 0],
+        );
+        return e;
+      });
+
+  @override
+  Future<Result<SgEmployee, SgFailure>> updateEmployee(SgEmployee e) async => _wrap(() {
+        _db.execute(
+          'UPDATE employees SET name = ?, role = ?, contracted_hours = ?, kiosk_name = ?, personal_pin_hash = ?, kiosk_pin_hash = ?, active = ? WHERE id = ?',
+          [e.name, e.role.name, e.contractedHours, e.kioskName, e.personalPinHash, e.kioskPinHash, e.active ? 1 : 0, e.id],
+        );
+        return e;
+      });
+
+  @override
+  Future<Result<SgEmployee?, SgFailure>> getEmployee(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM employees WHERE id = ?', [id]);
+        return rs.isEmpty ? null : _rowToEmployee(rs.first);
+      });
+
+  @override
+  Future<Result<SgEmployee?, SgFailure>> getEmployeeByKioskName(String kioskName) async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM employees WHERE kiosk_name = ? AND active = 1',
+          [kioskName],
+        );
+        return rs.isEmpty ? null : _rowToEmployee(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgEmployee>, SgFailure>> listEmployees({bool activeOnly = true}) async => _wrap(() {
+        final rs = activeOnly
+            ? _db.select('SELECT * FROM employees WHERE active = 1 ORDER BY name')
+            : _db.select('SELECT * FROM employees ORDER BY name');
+        return rs.map(_rowToEmployee).toList();
+      });
+
+  SgEmployee _rowToEmployee(Row r) => SgEmployee(
+        id: r['id'] as String,
+        name: r['name'] as String,
+        role: SgEmployeeRole.values.firstWhere((x) => x.name == r['role']),
+        contractedHours: (r['contracted_hours'] as num).toDouble(),
+        kioskName: r['kiosk_name'] as String,
+        personalPinHash: r['personal_pin_hash'] as String?,
+        kioskPinHash: r['kiosk_pin_hash'] as String?,
+        active: (r['active'] as int) == 1,
+      );
+
+  // ============== Shifts ==============
+  @override
+  Future<Result<SgShift, SgFailure>> createShift(SgShift s) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO shifts(id, employee_id, starts_at, ends_at, planned_ends_at, position, status) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [s.id, s.employeeId, s.startsAt.toIso8601String(), s.endsAt?.toIso8601String(), s.plannedEndsAt?.toIso8601String(), s.position.name, s.status.name],
+        );
+        return s;
+      });
+
+  @override
+  Future<Result<SgShift, SgFailure>> updateShift(SgShift s) async => _wrap(() {
+        _db.execute(
+          'UPDATE shifts SET ends_at = ?, planned_ends_at = ?, position = ?, status = ? WHERE id = ?',
+          [s.endsAt?.toIso8601String(), s.plannedEndsAt?.toIso8601String(), s.position.name, s.status.name, s.id],
+        );
+        return s;
+      });
+
+  @override
+  Future<Result<SgShift?, SgFailure>> getShift(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM shifts WHERE id = ?', [id]);
+        return rs.isEmpty ? null : _rowToShift(rs.first);
+      });
+
+  @override
+  Future<Result<SgShift?, SgFailure>> getActiveShiftForEmployee(String employeeId) async => _wrap(() {
+        final rs = _db.select(
+          "SELECT * FROM shifts WHERE employee_id = ? AND status = 'active' ORDER BY starts_at DESC LIMIT 1",
+          [employeeId],
+        );
+        return rs.isEmpty ? null : _rowToShift(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgShift>, SgFailure>> listShifts({String? employeeId, DateTime? from, DateTime? to}) async => _wrap(() {
+        var sql = 'SELECT * FROM shifts WHERE 1=1';
+        final params = <Object>[];
+        if (employeeId != null) {
+          sql += ' AND employee_id = ?';
+          params.add(employeeId);
+        }
+        if (from != null) {
+          sql += ' AND starts_at >= ?';
+          params.add(from.toIso8601String());
+        }
+        if (to != null) {
+          sql += ' AND starts_at <= ?';
+          params.add(to.toIso8601String());
+        }
+        sql += ' ORDER BY starts_at DESC';
+        return _db.select(sql, params).map(_rowToShift).toList();
+      });
+
+  SgShift _rowToShift(Row r) => SgShift(
+        id: r['id'] as String,
+        employeeId: r['employee_id'] as String,
+        startsAt: DateTime.parse(r['starts_at'] as String),
+        endsAt: r['ends_at'] != null ? DateTime.parse(r['ends_at'] as String) : null,
+        plannedEndsAt: r['planned_ends_at'] != null
+            ? DateTime.parse(r['planned_ends_at'] as String)
+            : null,
+        position: SgShiftPosition.values.firstWhere((p) => p.name == r['position']),
+        status: SgShiftStatus.values.firstWhere((s) => s.name == r['status']),
+      );
+
+  // ============== Breaks ==============
+  @override
+  Future<Result<SgBreak, SgFailure>> createBreak(SgBreak b) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO breaks(id, employee_id, shift_id, type, started_at, ended_at, expected_duration_ms) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [b.id, b.employeeId, b.shiftId, b.type.name, b.startedAt.toIso8601String(), b.endedAt?.toIso8601String(), b.expectedDuration.inMilliseconds],
+        );
+        return b;
+      });
+
+  @override
+  Future<Result<SgBreak, SgFailure>> updateBreak(SgBreak b) async => _wrap(() {
+        _db.execute(
+          'UPDATE breaks SET ended_at = ?, expected_duration_ms = ? WHERE id = ?',
+          [b.endedAt?.toIso8601String(), b.expectedDuration.inMilliseconds, b.id],
+        );
+        return b;
+      });
+
+  @override
+  Future<Result<SgBreak?, SgFailure>> getActiveBreakForEmployee(String employeeId) async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM breaks WHERE employee_id = ? AND ended_at IS NULL ORDER BY started_at DESC LIMIT 1',
+          [employeeId],
+        );
+        return rs.isEmpty ? null : _rowToBreak(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgBreak>, SgFailure>> listBreaksForShift(String shiftId) async => _wrap(() {
+        return _db.select(
+          'SELECT * FROM breaks WHERE shift_id = ? ORDER BY started_at ASC',
+          [shiftId],
+        ).map(_rowToBreak).toList();
+      });
+
+  SgBreak _rowToBreak(Row r) => SgBreak(
+        id: r['id'] as String,
+        employeeId: r['employee_id'] as String,
+        shiftId: r['shift_id'] as String,
+        type: SgBreakType.values.firstWhere((t) => t.name == r['type']),
+        startedAt: DateTime.parse(r['started_at'] as String),
+        endedAt: r['ended_at'] != null ? DateTime.parse(r['ended_at'] as String) : null,
+        expectedDuration: Duration(milliseconds: r['expected_duration_ms'] as int),
+      );
+
+  // ============== Menu cards ==============
+  @override
+  Future<Result<SgMenuCard, SgFailure>> createMenuCard(SgMenuCard card) async => _wrap(() {
+        _db.execute('BEGIN TRANSACTION');
+        try {
+          _db.execute(
+            'INSERT INTO menu_cards(id, name, version, created_at, published_at) VALUES (?, ?, ?, ?, ?)',
+            [card.id, card.name, card.version, card.createdAt.toIso8601String(), card.publishedAt?.toIso8601String()],
+          );
+          for (final c in card.categories) {
+            _db.execute(
+              'INSERT INTO menu_categories(id, card_id, name, sort_order) VALUES (?, ?, ?, ?)',
+              [c.id, c.cardId, c.name, c.sortOrder],
+            );
+          }
+          for (final it in card.items) {
+            _db.execute(
+              'INSERT INTO menu_items(id, card_id, category_id, name, description, price_cents, available, allergens_json, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [it.id, it.cardId, it.categoryId, it.name, it.description, it.priceCents, it.available ? 1 : 0, jsonEncode(it.allergens.map((a) => a.name).toList()), it.sortOrder],
+            );
+          }
+          _db.execute('COMMIT');
+          return card;
+        } catch (e) {
+          _db.execute('ROLLBACK');
+          rethrow;
+        }
+      });
+
+  @override
+  Future<Result<SgMenuCard, SgFailure>> updateMenuCard(SgMenuCard card) async => _wrap(() {
+        _db.execute(
+          'UPDATE menu_cards SET name = ?, version = ?, published_at = ? WHERE id = ?',
+          [card.name, card.version, card.publishedAt?.toIso8601String(), card.id],
+        );
+        return card;
+      });
+
+  @override
+  Future<Result<SgMenuCard?, SgFailure>> getMenuCard(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM menu_cards WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return _hydrateMenuCard(rs.first);
+      });
+
+  @override
+  Future<Result<SgMenuCard?, SgFailure>> getCurrentPublishedMenuCard() async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM menu_cards WHERE published_at IS NOT NULL ORDER BY version DESC LIMIT 1',
+        );
+        if (rs.isEmpty) return null;
+        return _hydrateMenuCard(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgMenuCard>, SgFailure>> listMenuCards({bool includeDrafts = false}) async => _wrap(() {
+        final rs = includeDrafts
+            ? _db.select('SELECT * FROM menu_cards ORDER BY version DESC')
+            : _db.select('SELECT * FROM menu_cards WHERE published_at IS NOT NULL ORDER BY version DESC');
+        return rs.map(_hydrateMenuCard).toList();
+      });
+
+  @override
+  Future<Result<int, SgFailure>> nextMenuCardVersion() async => _wrap(() {
+        final rs = _db.select('SELECT COALESCE(MAX(version), 0) AS v FROM menu_cards');
+        return ((rs.first['v'] as int?) ?? 0) + 1;
+      });
+
+  SgMenuCard _hydrateMenuCard(Row r) {
+    final cardId = r['id'] as String;
+    final cats = _db.select(
+      'SELECT * FROM menu_categories WHERE card_id = ? ORDER BY sort_order',
+      [cardId],
+    ).map((c) => SgMenuCategory(
+      id: c['id'] as String,
+      cardId: c['card_id'] as String,
+      name: c['name'] as String,
+      sortOrder: c['sort_order'] as int,
+    )).toList();
+    final items = _db.select(
+      'SELECT * FROM menu_items WHERE card_id = ? ORDER BY sort_order',
+      [cardId],
+    ).map((i) {
+      final allergensList =
+          (jsonDecode(i['allergens_json'] as String) as List<dynamic>)
+              .map((a) => SgAllergen.values
+                  .firstWhere((al) => al.name == a as String))
+              .toSet();
+      return SgMenuItem(
+        id: i['id'] as String,
+        cardId: i['card_id'] as String,
+        categoryId: i['category_id'] as String,
+        name: i['name'] as String,
+        description: i['description'] as String?,
+        priceCents: i['price_cents'] as int,
+        available: (i['available'] as int) == 1,
+        allergens: allergensList,
+        sortOrder: i['sort_order'] as int,
+      );
+    }).toList();
+    return SgMenuCard(
+      id: cardId,
+      name: r['name'] as String,
+      version: r['version'] as int,
+      createdAt: DateTime.parse(r['created_at'] as String),
+      publishedAt: r['published_at'] != null
+          ? DateTime.parse(r['published_at'] as String)
+          : null,
+      categories: cats,
+      items: items,
+    );
+  }
+
+  // ============== PDF exports ==============
+  @override
+  Future<Result<void, SgFailure>> storePdfExport(SgPdfExport export) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO pdf_exports(id, card_id, card_version, rendered_at, file_path, byte_size, engine) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [export.id, export.cardId, export.cardVersion, export.renderedAt.toIso8601String(), export.filePath, export.byteSize, export.engine],
+        );
+      });
+
+  @override
+  Future<Result<List<SgPdfExport>, SgFailure>> listPdfExports({String? cardId}) async => _wrap(() {
+        final rs = cardId == null
+            ? _db.select('SELECT * FROM pdf_exports ORDER BY rendered_at DESC')
+            : _db.select(
+                'SELECT * FROM pdf_exports WHERE card_id = ? ORDER BY rendered_at DESC',
+                [cardId],
+              );
+        return rs.map((r) => SgPdfExport(
+              id: r['id'] as String,
+              cardId: r['card_id'] as String,
+              cardVersion: r['card_version'] as int,
+              renderedAt: DateTime.parse(r['rendered_at'] as String),
+              filePath: r['file_path'] as String,
+              byteSize: r['byte_size'] as int,
+              engine: r['engine'] as String,
+            )).toList();
+      });
+
+  // ============== Shopping ==============
+  @override
+  Future<Result<SgShoppingList, SgFailure>> createShoppingList(SgShoppingList l) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO shopping_lists(id, name, created_at, status) VALUES (?, ?, ?, ?)',
+          [l.id, l.name, l.createdAt.toIso8601String(), l.status.name],
+        );
+        return l;
+      });
+
+  @override
+  Future<Result<SgShoppingList, SgFailure>> updateShoppingList(SgShoppingList l) async => _wrap(() {
+        _db.execute(
+          'UPDATE shopping_lists SET name = ?, status = ? WHERE id = ?',
+          [l.name, l.status.name, l.id],
+        );
+        return l;
+      });
+
+  @override
+  Future<Result<SgShoppingList?, SgFailure>> getShoppingList(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM shopping_lists WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return SgShoppingList(
+          id: rs.first['id'] as String,
+          name: rs.first['name'] as String,
+          createdAt: DateTime.parse(rs.first['created_at'] as String),
+          status: SgShoppingListStatus.values.firstWhere((s) => s.name == rs.first['status']),
+        );
+      });
+
+  @override
+  Future<Result<List<SgShoppingList>, SgFailure>> listShoppingLists({bool openOnly = false}) async => _wrap(() {
+        final rs = openOnly
+            ? _db.select("SELECT * FROM shopping_lists WHERE status = 'open' ORDER BY created_at DESC")
+            : _db.select('SELECT * FROM shopping_lists ORDER BY created_at DESC');
+        return rs.map((r) => SgShoppingList(
+              id: r['id'] as String,
+              name: r['name'] as String,
+              createdAt: DateTime.parse(r['created_at'] as String),
+              status: SgShoppingListStatus.values.firstWhere((s) => s.name == r['status']),
+            )).toList();
+      });
+
+  @override
+  Future<Result<SgShoppingItem, SgFailure>> createShoppingItem(SgShoppingItem item) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO shopping_items(id, list_id, supplier_id, name, quantity, unit, urgent, done, created_at, checked_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [item.id, item.listId, item.supplierId, item.name, item.quantity, item.unit, item.urgent ? 1 : 0, item.done ? 1 : 0, item.createdAt.toIso8601String(), item.checkedAt?.toIso8601String()],
+        );
+        return item;
+      });
+
+  @override
+  Future<Result<SgShoppingItem, SgFailure>> updateShoppingItem(SgShoppingItem item) async => _wrap(() {
+        _db.execute(
+          'UPDATE shopping_items SET supplier_id = ?, name = ?, quantity = ?, unit = ?, urgent = ?, done = ?, checked_at = ? WHERE id = ?',
+          [item.supplierId, item.name, item.quantity, item.unit, item.urgent ? 1 : 0, item.done ? 1 : 0, item.checkedAt?.toIso8601String(), item.id],
+        );
+        return item;
+      });
+
+  @override
+  Future<Result<SgShoppingItem?, SgFailure>> getShoppingItem(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM shopping_items WHERE id = ?', [id]);
+        return rs.isEmpty ? null : _rowToShoppingItem(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgShoppingItem>, SgFailure>> listShoppingItems({String? listId, bool? done}) async => _wrap(() {
+        var sql = 'SELECT * FROM shopping_items WHERE 1=1';
+        final params = <Object>[];
+        if (listId != null) {
+          sql += ' AND list_id = ?';
+          params.add(listId);
+        }
+        if (done != null) {
+          sql += ' AND done = ?';
+          params.add(done ? 1 : 0);
+        }
+        sql += ' ORDER BY urgent DESC, done ASC, created_at ASC';
+        return _db.select(sql, params).map(_rowToShoppingItem).toList();
+      });
+
+  SgShoppingItem _rowToShoppingItem(Row r) => SgShoppingItem(
+        id: r['id'] as String,
+        listId: r['list_id'] as String,
+        supplierId: r['supplier_id'] as String?,
+        name: r['name'] as String,
+        quantity: (r['quantity'] as num).toDouble(),
+        unit: r['unit'] as String,
+        urgent: (r['urgent'] as int) == 1,
+        done: (r['done'] as int) == 1,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        checkedAt: r['checked_at'] != null ? DateTime.parse(r['checked_at'] as String) : null,
+      );
+
+  // ============== Suppliers ==============
+  @override
+  Future<Result<SgSupplier, SgFailure>> createSupplier(SgSupplier s) async => _wrap(() {
+        _db.execute('INSERT INTO suppliers(id, name, contact) VALUES (?, ?, ?)', [s.id, s.name, s.contact]);
+        return s;
+      });
+
+  @override
+  Future<Result<List<SgSupplier>, SgFailure>> listSuppliers() async => _wrap(() {
+        return _db.select('SELECT * FROM suppliers ORDER BY name').map((r) => SgSupplier(
+              id: r['id'] as String,
+              name: r['name'] as String,
+              contact: r['contact'] as String?,
+            )).toList();
+      });
+
+  // ============== Questions ==============
+  @override
+  Future<Result<void, SgFailure>> storeQuestion(SgQuestion q) async => _wrap(() {
+        _db.execute(
+          'INSERT OR REPLACE INTO questions(id, asked_at, question, context_snapshot_json, answer, engine, answered_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [q.id, q.askedAt.toIso8601String(), q.question, jsonEncode(q.contextSnapshot), q.answer, q.engine, q.answeredAt?.toIso8601String()],
+        );
+      });
+
+  @override
+  Future<Result<List<SgQuestion>, SgFailure>> listQuestions({int? limit}) async => _wrap(() {
+        final lim = limit ?? 50;
+        return _db.select('SELECT * FROM questions ORDER BY asked_at DESC LIMIT ?', [lim])
+            .map((r) => SgQuestion(
+                  id: r['id'] as String,
+                  askedAt: DateTime.parse(r['asked_at'] as String),
+                  question: r['question'] as String,
+                  contextSnapshot: jsonDecode(r['context_snapshot_json'] as String)
+                      as Map<String, dynamic>,
+                  answer: r['answer'] as String?,
+                  engine: r['engine'] as String,
+                  answeredAt: r['answered_at'] != null
+                      ? DateTime.parse(r['answered_at'] as String)
+                      : null,
+                ))
+            .toList();
+      });
+
+  // ============== Kiosk sessions ==============
+  @override
+  Future<Result<SgKioskSession, SgFailure>> createKioskSession(SgKioskSession s) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO kiosk_sessions(id, device_id, device_label, started_at, expires_at, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+          [s.id, s.deviceId, s.deviceLabel, s.startedAt.toIso8601String(), s.expiresAt.toIso8601String(), s.createdBy],
+        );
+        return s;
+      });
+
+  @override
+  Future<Result<SgKioskSession?, SgFailure>> getActiveKioskSession(String deviceId) async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM kiosk_sessions WHERE device_id = ? AND expires_at > ? ORDER BY started_at DESC LIMIT 1',
+          [deviceId, DateTime.now().toUtc().toIso8601String()],
+        );
+        if (rs.isEmpty) return null;
+        return SgKioskSession(
+          id: rs.first['id'] as String,
+          deviceId: rs.first['device_id'] as String,
+          deviceLabel: rs.first['device_label'] as String?,
+          startedAt: DateTime.parse(rs.first['started_at'] as String),
+          expiresAt: DateTime.parse(rs.first['expires_at'] as String),
+          createdBy: rs.first['created_by'] as String,
+        );
+      });
+
+  void close() => _db.dispose();
+}

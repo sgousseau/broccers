@@ -1,0 +1,28 @@
+name: br_server
+description: Broccers — Backend Dart shelf (REST + SQLite + PIN auth + PDF + Claude + TestControlServer).
+version: 0.1.0
+publish_to: none
+
+resolution: workspace
+
+environment:
+  sdk: ">=3.8.0 <4.0.0"
+
+dependencies:
+  br_core:
+    path: ../br_core
+  shelf: ^1.4.1
+  shelf_router: ^1.1.4
+  sqlite3: ^2.4.0
+  bcrypt: ^1.1.3
+  dart_jsonwebtoken: ^2.14.0
+  http: ^1.2.2
+  uuid: ^4.5.1
+  args: ^2.5.0
+  meta: ^1.16.0
+  logging: ^1.3.0
+  pdf: ^3.11.0
+
+dev_dependencies:
+  test: ^1.25.0
+  lints: ^5.0.0

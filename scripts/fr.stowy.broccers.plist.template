@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  LaunchAgent template Broccers Mac Studio autostart.
+  Install :
+    cp scripts/fr.stowy.broccers.plist.template ~/Library/LaunchAgents/fr.stowy.broccers.plist
+    # Edit env vars BR_PIN_BCRYPT_HASH and BR_JWT_SECRET below
+    launchctl load ~/Library/LaunchAgents/fr.stowy.broccers.plist
+    launchctl start fr.stowy.broccers
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>fr.stowy.broccers</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/dart</string>
+    <string>run</string>
+    <string>packages/br_server/bin/server.dart</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>/Users/YOUR_USER/Code/broccers</string>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>BR_HOST</key>
+    <string>0.0.0.0</string>
+    <key>BR_PORT</key>
+    <string>8444</string>
+    <key>BR_PIN_BCRYPT_HASH</key>
+    <string>REPLACE_WITH_OUTPUT_OF_setup-pin.dart</string>
+    <key>BR_JWT_SECRET</key>
+    <string>REPLACE_WITH_OUTPUT_OF_setup-pin.dart</string>
+    <key>BR_CLAUDE_CLI</key>
+    <string>/usr/local/bin/claude</string>
+    <key>PATH</key>
+    <string>/usr/local/bin:/usr/bin:/bin</string>
+  </dict>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>KeepAlive</key>
+  <true/>
+
+  <key>StandardOutPath</key>
+  <string>/tmp/broccers.out.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/tmp/broccers.err.log</string>
+</dict>
+</plist>
