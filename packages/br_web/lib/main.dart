@@ -327,41 +327,87 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
 
   Future<void> _addEmployee() async {
     final nameCtrl = TextEditingController();
-    String role = 'server';
+    final selectedRoles = <String>{'server'};
+    String? defaultRole;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Nouvel employé'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nom'), autofocus: true),
-            const SizedBox(height: 12),
-            StatefulBuilder(builder: (ctx, set) {
-              return DropdownButton<String>(
-                value: role,
-                items: const [
-                  DropdownMenuItem(value: 'manager', child: Text('Manager')),
-                  DropdownMenuItem(value: 'server', child: Text('Serveur')),
-                  DropdownMenuItem(value: 'cook', child: Text('Cuisinier')),
-                  DropdownMenuItem(value: 'bartender', child: Text('Barman')),
-                  DropdownMenuItem(value: 'dishwasher', child: Text('Plongeur')),
-                  DropdownMenuItem(value: 'host', child: Text('Hôte')),
-                ],
-                onChanged: (v) => set(() => role = v!),
-              );
-            }),
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        return AlertDialog(
+          title: const Text('Nouvel employé'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Nom'), autofocus: true),
+                const SizedBox(height: 16),
+                const Text('Rôles (capabilities) — coche tout ce qu\'il sait faire :',
+                    style: TextStyle(fontSize: 12, color: BrocBrand.brocCream)),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [
+                    for (final r in const [
+                      ('manager', 'Manager'),
+                      ('server', 'Serveur'),
+                      ('runner', 'Runner'),
+                      ('cook', 'Cuisinier'),
+                      ('bartender', 'Barman'),
+                      ('dishwasher', 'Plongeur'),
+                      ('host', 'Hôte'),
+                    ])
+                      FilterChip(
+                        label: Text(r.$2),
+                        selected: selectedRoles.contains(r.$1),
+                        onSelected: (v) => set(() {
+                          if (v) {
+                            selectedRoles.add(r.$1);
+                          } else {
+                            selectedRoles.remove(r.$1);
+                            if (defaultRole == r.$1) defaultRole = null;
+                          }
+                        }),
+                        selectedColor: BrocBrand.brocRed,
+                        checkmarkColor: BrocBrand.brocCream,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const Text('Rôle par défaut (si pas de planning pour le jour) :',
+                    style: TextStyle(fontSize: 12, color: BrocBrand.brocCream)),
+                const SizedBox(height: 6),
+                DropdownButton<String>(
+                  value: selectedRoles.contains(defaultRole) ? defaultRole : null,
+                  hint: const Text('— auto —'),
+                  isExpanded: true,
+                  items: [
+                    const DropdownMenuItem<String>(value: null, child: Text('Auto (premier rôle)')),
+                    for (final r in selectedRoles)
+                      DropdownMenuItem<String>(value: r, child: Text(r)),
+                  ],
+                  onChanged: (v) => set(() => defaultRole = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+            FilledButton(
+              onPressed: selectedRoles.isEmpty || nameCtrl.text.trim().isEmpty
+                  ? null
+                  : () => Navigator.pop(context, true),
+              child: const Text('Créer'),
+            ),
           ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Créer')),
-        ],
-      ),
+        );
+      }),
     );
-    if (ok != true) return;
+    if (ok != true || selectedRoles.isEmpty) return;
+    final rolesArg = selectedRoles.join(',');
+    final defaultArg = defaultRole != null ? ' --default-role $defaultRole' : '';
     final r = await widget.api.command(
-      'employee create --name "${nameCtrl.text}" --role $role',
+      'employee create --name "${nameCtrl.text}" --roles $rolesArg$defaultArg',
     );
     if (!mounted) return;
     r.when(
@@ -386,26 +432,54 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                   itemCount: _employees.length,
                   itemBuilder: (_, i) {
                     final e = _employees[i];
+                    final roles = ((e['roles'] as List<dynamic>?) ?? const [])
+                        .cast<String>();
+                    final defaultRole = e['default_role'] as String?;
+                    final rolesLabel = roles.isEmpty
+                        ? 'aucun rôle'
+                        : roles.join(' · ');
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       child: ListTile(
-                        leading: const CircleAvatar(child: Icon(Icons.person)),
-                        title: Text(e['name'] as String),
-                        subtitle: Text('${e['role']} · ${e['contracted_hours']}h/sem'),
+                        leading: CircleAvatar(
+                          backgroundColor: BrocBrand.brocRed,
+                          child: Text(
+                            (e['name'] as String).isNotEmpty
+                                ? (e['name'] as String)[0].toUpperCase()
+                                : '?',
+                            style: const TextStyle(
+                                color: BrocBrand.brocCream,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        title: Text(e['name'] as String,
+                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              rolesLabel + (defaultRole != null ? '  (default: $defaultRole)' : ''),
+                              style: const TextStyle(
+                                  color: BrocBrand.brocYellow, fontSize: 12),
+                            ),
+                            Text('${e['contracted_hours']}h/sem',
+                                style: const TextStyle(fontSize: 11)),
+                          ],
+                        ),
                         trailing: Wrap(spacing: 4, children: [
                           IconButton(
-                            tooltip: 'Clock-in',
-                            icon: const Icon(Icons.login, color: Colors.green),
+                            tooltip: 'Démarrer le shift (clock-in)',
+                            icon: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
                             onPressed: () => _clockIn(e['id'] as String),
                           ),
                           IconButton(
-                            tooltip: 'Pause',
-                            icon: const Icon(Icons.coffee, color: Colors.orange),
+                            tooltip: 'Démarrer une pause',
+                            icon: const Icon(Icons.local_cafe, color: Colors.orange),
                             onPressed: () => _startBreak(e['id'] as String),
                           ),
                           IconButton(
-                            tooltip: 'Clock-out',
-                            icon: const Icon(Icons.logout, color: Colors.redAccent),
+                            tooltip: 'Terminer le shift (clock-out) — n\'efface PAS l\'employé',
+                            icon: const Icon(Icons.stop_circle, color: Colors.redAccent),
                             onPressed: () => _clockOut(e['id'] as String),
                           ),
                         ]),
