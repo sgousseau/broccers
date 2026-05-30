@@ -29,6 +29,10 @@ class BrCommandRegistry {
   final RecordStaffConsumptionUseCase _recordConsumption;
   final ComputeShiftCostUseCase _computeShiftCost;
   final ArchiveEmployeeUseCase _archiveEmployee;
+  final RecordShiftTipUseCase _recordShiftTip;
+  final GenerateMorningBriefingUseCase _generateBriefing;
+  final GenerateOnboardingChecklistUseCase _generateOnboarding;
+  final CheckOnboardingItemUseCase _checkOnboardingItem;
   final Uuid _uuid;
   final DateTime Function() _now;
 
@@ -53,6 +57,10 @@ class BrCommandRegistry {
     required RecordStaffConsumptionUseCase recordConsumption,
     required ComputeShiftCostUseCase computeShiftCost,
     required ArchiveEmployeeUseCase archiveEmployee,
+    required RecordShiftTipUseCase recordShiftTip,
+    required GenerateMorningBriefingUseCase generateBriefing,
+    required GenerateOnboardingChecklistUseCase generateOnboarding,
+    required CheckOnboardingItemUseCase checkOnboardingItem,
     required Uuid uuid,
     required DateTime Function() now,
   })  : _config = config,
@@ -75,6 +83,10 @@ class BrCommandRegistry {
         _recordConsumption = recordConsumption,
         _computeShiftCost = computeShiftCost,
         _archiveEmployee = archiveEmployee,
+        _recordShiftTip = recordShiftTip,
+        _generateBriefing = generateBriefing,
+        _generateOnboarding = generateOnboarding,
+        _checkOnboardingItem = checkOnboardingItem,
         _uuid = uuid,
         _now = now;
 
@@ -117,6 +129,12 @@ class BrCommandRegistry {
           return _dispatchConsumption(args);
         case 'cost':
           return _dispatchCost(args);
+        case 'tip':
+          return _dispatchTip(args);
+        case 'briefing':
+          return _dispatchBriefing(args);
+        case 'onboarding':
+          return _dispatchOnboarding(args);
         default:
           return _invalid('unknown command: $group');
       }
@@ -645,6 +663,104 @@ class BrCommandRegistry {
         return r.when(success: (b) => _success(b.toJson()), failure: _failureOf);
       default:
         return _invalid('cost: unknown sub "$sub"');
+    }
+  }
+
+  // tip (Phase D)
+  Future<Map<String, dynamic>> _dispatchTip(List<String> args) async {
+    if (args.isEmpty) return _invalid('tip <set>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'set':
+        final shiftId = _opt(rest, '--shift');
+        final cents = int.tryParse(_opt(rest, '--cents') ?? '');
+        if (shiftId == null || cents == null) {
+          return _invalid('tip set --shift <id> --cents <N> [--actor X --reason "..."]');
+        }
+        final r = await _recordShiftTip(
+          shiftId: shiftId,
+          tipCents: cents,
+          actor: _opt(rest, '--actor') ?? 'manager',
+          reason: _opt(rest, '--reason'),
+        );
+        return r.when(success: (s) => _success(s.toJson()), failure: _failureOf);
+      default:
+        return _invalid('tip: unknown sub "$sub"');
+    }
+  }
+
+  // briefing (Phase D)
+  Future<Map<String, dynamic>> _dispatchBriefing(List<String> args) async {
+    if (args.isEmpty) return _invalid('briefing <today|generate>');
+    final sub = args.first;
+    switch (sub) {
+      case 'today':
+      case 'generate':
+        final r = await _generateBriefing(actor: 'manager');
+        return r.when(success: (q) => _success(q.toJson()), failure: _failureOf);
+      default:
+        return _invalid('briefing: unknown sub "$sub"');
+    }
+  }
+
+  // onboarding (Phase D)
+  Future<Map<String, dynamic>> _dispatchOnboarding(List<String> args) async {
+    if (args.isEmpty) return _invalid('onboarding <generate|list|get|check|uncheck>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'generate':
+        final emp = _opt(rest, '--employee');
+        final roleStr = _opt(rest, '--role');
+        if (emp == null || roleStr == null) {
+          return _invalid('onboarding generate --employee <id> --role X');
+        }
+        final role = SgEmployeeRole.values
+            .where((r) => r.name == roleStr)
+            .firstOrNull;
+        if (role == null) return _invalid('unknown role: $roleStr');
+        final r = await _generateOnboarding(
+          employeeId: emp,
+          role: role,
+          actor: _opt(rest, '--actor') ?? 'manager',
+        );
+        return r.when(success: (c) => _success(c.toJson()), failure: _failureOf);
+      case 'list':
+        final emp = _opt(rest, '--employee');
+        final r = await _repo.listOnboardingChecklists(employeeId: emp);
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'checklists': l.map((c) => c.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      case 'get':
+        if (rest.isEmpty) return _invalid('onboarding get <checklist_id>');
+        final r = await _repo.getOnboardingChecklist(rest.first);
+        return r.when(
+          success: (c) => c == null
+              ? _failure('not found')
+              : _success(c.toJson()),
+          failure: _failureOf,
+        );
+      case 'check':
+      case 'uncheck':
+        final cid = _opt(rest, '--checklist');
+        final idx = int.tryParse(_opt(rest, '--item') ?? '');
+        if (cid == null || idx == null) {
+          return _invalid('onboarding $sub --checklist <id> --item <index> [--actor X]');
+        }
+        final r = await _checkOnboardingItem(
+          checklistId: cid,
+          itemIndex: idx,
+          done: sub == 'check',
+          actor: _opt(rest, '--actor') ?? 'employee',
+        );
+        return r.when(success: (c) => _success(c.toJson()), failure: _failureOf);
+      default:
+        return _invalid('onboarding: unknown sub "$sub"');
     }
   }
 

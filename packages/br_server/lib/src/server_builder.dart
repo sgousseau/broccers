@@ -119,6 +119,30 @@ class BrServerBuilder {
       clock: clock,
       eventIdGenerator: () => 'evt-${genId()}',
     );
+    final recordShiftTip = RecordShiftTipUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final generateBriefing = GenerateMorningBriefingUseCase(
+      repository: repo,
+      engine: question,
+      clock: clock,
+      idGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final generateOnboarding = GenerateOnboardingChecklistUseCase(
+      repository: repo,
+      engine: question,
+      clock: clock,
+      idGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final checkOnboardingItem = CheckOnboardingItemUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
 
     final commands = BrCommandRegistry(
       config: config,
@@ -141,6 +165,10 @@ class BrServerBuilder {
       recordConsumption: recordConsumption,
       computeShiftCost: computeShiftCost,
       archiveEmployee: archiveEmployee,
+      recordShiftTip: recordShiftTip,
+      generateBriefing: generateBriefing,
+      generateOnboarding: generateOnboarding,
+      checkOnboardingItem: checkOnboardingItem,
       uuid: uuid,
       now: now,
     );

@@ -38,6 +38,9 @@ export 'src/entities/sg_event_journal_entry.dart';
 export 'src/entities/sg_hourly_rate.dart';
 export 'src/entities/sg_staff_consumption.dart';
 
+// === Entities — Phase D (onboarding) ===
+export 'src/entities/sg_onboarding_checklist.dart';
+
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
 export 'src/ports/sg_pdf_renderer_port.dart';
@@ -61,3 +64,7 @@ export 'src/usecases/set_hourly_rate_usecase.dart';
 export 'src/usecases/record_staff_consumption_usecase.dart';
 export 'src/usecases/compute_shift_cost_usecase.dart';
 export 'src/usecases/archive_employee_usecase.dart';
+export 'src/usecases/record_shift_tip_usecase.dart';
+export 'src/usecases/generate_morning_briefing_usecase.dart';
+export 'src/usecases/generate_onboarding_checklist_usecase.dart';
+export 'src/usecases/check_onboarding_item_usecase.dart';

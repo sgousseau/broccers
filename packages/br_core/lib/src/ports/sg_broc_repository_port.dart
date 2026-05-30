@@ -4,6 +4,7 @@ import '../entities/sg_event_journal_entry.dart';
 import '../entities/sg_hourly_rate.dart';
 import '../entities/sg_kiosk_session.dart';
 import '../entities/sg_menu_card.dart';
+import '../entities/sg_onboarding_checklist.dart';
 import '../entities/sg_pdf_export.dart';
 import '../entities/sg_question.dart';
 import '../entities/sg_shift.dart';
@@ -109,4 +110,10 @@ abstract interface class SgBrocRepositoryPort {
     DateTime? to,
     bool? paid,
   });
+
+  // ============== Onboarding (Phase D) ==============
+  Future<Result<SgOnboardingChecklist, SgFailure>> createOnboardingChecklist(SgOnboardingChecklist cl);
+  Future<Result<SgOnboardingChecklist, SgFailure>> updateOnboardingChecklist(SgOnboardingChecklist cl);
+  Future<Result<SgOnboardingChecklist?, SgFailure>> getOnboardingChecklist(String id);
+  Future<Result<List<SgOnboardingChecklist>, SgFailure>> listOnboardingChecklists({String? employeeId});
 }

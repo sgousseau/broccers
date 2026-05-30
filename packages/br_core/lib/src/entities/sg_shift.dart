@@ -9,6 +9,8 @@ enum SgShiftPosition {
 }
 
 /// Créneau de travail d'un employé. `endsAt` null tant que actif.
+///
+/// **Phase D** : [tipCents] = pourboires perçus durant ce shift (saisie manager ou employé en fin de shift).
 @immutable
 class SgShift {
   final String id;
@@ -18,6 +20,7 @@ class SgShift {
   final DateTime? plannedEndsAt;
   final SgShiftPosition position;
   final SgShiftStatus status;
+  final int tipCents;
 
   const SgShift({
     required this.id,
@@ -27,6 +30,7 @@ class SgShift {
     required this.position,
     this.endsAt,
     this.plannedEndsAt,
+    this.tipCents = 0,
   });
 
   factory SgShift.clockIn({
@@ -55,6 +59,8 @@ class SgShift {
         status: SgShiftStatus.cancelled,
       );
 
+  SgShift withTip(int tipCents) => copyWith(tipCents: tipCents);
+
   bool get isActive => status == SgShiftStatus.active;
   Duration get duration =>
       (endsAt ?? DateTime.now()).difference(startsAt);
@@ -67,6 +73,7 @@ class SgShift {
     DateTime? plannedEndsAt,
     SgShiftPosition? position,
     SgShiftStatus? status,
+    int? tipCents,
   }) =>
       SgShift(
         id: id ?? this.id,
@@ -76,6 +83,7 @@ class SgShift {
         plannedEndsAt: plannedEndsAt ?? this.plannedEndsAt,
         position: position ?? this.position,
         status: status ?? this.status,
+        tipCents: tipCents ?? this.tipCents,
       );
 
   Map<String, dynamic> toJson() => {
@@ -86,6 +94,7 @@ class SgShift {
         if (plannedEndsAt != null) 'planned_ends_at': plannedEndsAt!.toIso8601String(),
         'position': position.name,
         'status': status.name,
+        'tip_cents': tipCents,
       };
 
   factory SgShift.fromJson(Map<String, dynamic> json) => SgShift(
@@ -102,6 +111,7 @@ class SgShift {
             .firstWhere((p) => p.name == json['position']),
         status: SgShiftStatus.values
             .firstWhere((s) => s.name == json['status']),
+        tipCents: json['tip_cents'] as int? ?? 0,
       );
 
   @override
@@ -114,5 +124,5 @@ class SgShift {
 
   @override
   String toString() =>
-      'SgShift($id, emp=$employeeId, ${status.name}, ${duration.inMinutes}min)';
+      'SgShift($id, emp=$employeeId, ${status.name}, ${duration.inMinutes}min${tipCents > 0 ? ", tip=${tipCents}c" : ""})';
 }

@@ -195,6 +195,18 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
     db.execute('CREATE INDEX IF NOT EXISTS idx_rates_emp ON hourly_rates(employee_id, role, valid_from);');
     db.execute('CREATE INDEX IF NOT EXISTS idx_consumptions_emp ON staff_consumptions(employee_id, consumed_at);');
 
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS onboarding_checklists (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        role TEXT NOT NULL,
+        items_json TEXT NOT NULL DEFAULT '[]',
+        created_at TEXT NOT NULL,
+        engine TEXT NOT NULL
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_onboarding_emp ON onboarding_checklists(employee_id, created_at DESC);');
+
     // === Phase A migrations from v0.1 → v0.2 (idempotent) ===
     final empCols = db
         .select('PRAGMA table_info(employees)')
@@ -219,6 +231,10 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
     if (shiftCols.contains('position')) {
       // Position dropped — segments now hold the role
       db.execute('ALTER TABLE shifts DROP COLUMN position');
+    }
+    // Phase D : add tip_cents to shifts
+    if (!shiftCols.contains('tip_cents')) {
+      db.execute('ALTER TABLE shifts ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0');
     }
 
     db.execute('CREATE INDEX IF NOT EXISTS idx_shifts_employee ON shifts(employee_id, status);');
@@ -341,7 +357,7 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
   @override
   Future<Result<SgShift, SgFailure>> createShift(SgShift s) async => _wrap(() {
         _db.execute(
-          'INSERT INTO shifts(id, employee_id, starts_at, ends_at, planned_ends_at, status) VALUES (?, ?, ?, ?, ?, ?)',
+          'INSERT INTO shifts(id, employee_id, starts_at, ends_at, planned_ends_at, status, tip_cents) VALUES (?, ?, ?, ?, ?, ?, ?)',
           [
             s.id,
             s.employeeId,
@@ -349,6 +365,7 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
             s.endsAt?.toIso8601String(),
             s.plannedEndsAt?.toIso8601String(),
             s.status.name,
+            s.tipCents,
           ],
         );
         return s;
@@ -357,11 +374,12 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
   @override
   Future<Result<SgShift, SgFailure>> updateShift(SgShift s) async => _wrap(() {
         _db.execute(
-          'UPDATE shifts SET ends_at = ?, planned_ends_at = ?, status = ? WHERE id = ?',
+          'UPDATE shifts SET ends_at = ?, planned_ends_at = ?, status = ?, tip_cents = ? WHERE id = ?',
           [
             s.endsAt?.toIso8601String(),
             s.plannedEndsAt?.toIso8601String(),
             s.status.name,
+            s.tipCents,
             s.id,
           ],
         );
@@ -413,6 +431,7 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
             : null,
         position: SgShiftPosition.service,
         status: SgShiftStatus.values.firstWhere((s) => s.name == r['status']),
+        tipCents: (r['tip_cents'] as int?) ?? 0,
       );
 
   // ============== Shift segments (Phase A) ==============
@@ -1049,6 +1068,65 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
               note: r['note'] as String?,
             )).toList();
       });
+
+  // ============== Onboarding checklists (Phase D) ==============
+  @override
+  Future<Result<SgOnboardingChecklist, SgFailure>> createOnboardingChecklist(SgOnboardingChecklist cl) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO onboarding_checklists(id, employee_id, role, items_json, created_at, engine) VALUES (?, ?, ?, ?, ?, ?)',
+          [
+            cl.id,
+            cl.employeeId,
+            cl.role.name,
+            jsonEncode(cl.items.map((i) => i.toJson()).toList()),
+            cl.createdAt.toIso8601String(),
+            cl.engine,
+          ],
+        );
+        return cl;
+      });
+
+  @override
+  Future<Result<SgOnboardingChecklist, SgFailure>> updateOnboardingChecklist(SgOnboardingChecklist cl) async => _wrap(() {
+        _db.execute(
+          'UPDATE onboarding_checklists SET role = ?, items_json = ? WHERE id = ?',
+          [
+            cl.role.name,
+            jsonEncode(cl.items.map((i) => i.toJson()).toList()),
+            cl.id,
+          ],
+        );
+        return cl;
+      });
+
+  @override
+  Future<Result<SgOnboardingChecklist?, SgFailure>> getOnboardingChecklist(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM onboarding_checklists WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return _rowToChecklist(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgOnboardingChecklist>, SgFailure>> listOnboardingChecklists({String? employeeId}) async => _wrap(() {
+        final rs = employeeId == null
+            ? _db.select('SELECT * FROM onboarding_checklists ORDER BY created_at DESC')
+            : _db.select(
+                'SELECT * FROM onboarding_checklists WHERE employee_id = ? ORDER BY created_at DESC',
+                [employeeId],
+              );
+        return rs.map(_rowToChecklist).toList();
+      });
+
+  SgOnboardingChecklist _rowToChecklist(Row r) => SgOnboardingChecklist(
+        id: r['id'] as String,
+        employeeId: r['employee_id'] as String,
+        role: SgEmployeeRole.fromName(r['role'] as String),
+        items: ((jsonDecode(r['items_json'] as String) as List<dynamic>))
+            .map((i) => SgOnboardingItem.fromJson(i as Map<String, dynamic>))
+            .toList(),
+        createdAt: DateTime.parse(r['created_at'] as String),
+        engine: r['engine'] as String,
+      );
 
   void close() => _db.dispose();
 }

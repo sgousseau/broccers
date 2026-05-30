@@ -226,6 +226,96 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
+  Future<void> _showMorningBriefing() async {
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        title: Row(children: [
+          Icon(Icons.wb_sunny, color: BrocBrand.brocYellow),
+          SizedBox(width: 8),
+          Text('Briefing matinal'),
+        ]),
+        content: SizedBox(
+          width: 300,
+          height: 100,
+          child: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              CircularProgressIndicator(color: BrocBrand.brocRed),
+              SizedBox(height: 12),
+              Text('Claude prépare le briefing du jour...'),
+            ]),
+          ),
+        ),
+      ),
+    );
+    final r = await widget.api.command('briefing today');
+    if (!mounted) return;
+    Navigator.pop(context);
+    r.when(
+      success: (data) {
+        if (data['type'] != 'success') {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(translateErrorFr(data['message']?.toString() ?? 'erreur')),
+            backgroundColor: Colors.red.shade900,
+          ));
+          return;
+        }
+        final result = data['result'] as Map<String, dynamic>;
+        final answer = result['answer'] as String? ?? '(pas de réponse)';
+        final ctx = result['context_snapshot'] as Map<String, dynamic>? ?? const {};
+        final shiftsToday = (ctx['shifts_today'] as List<dynamic>?) ?? const [];
+        showDialog<void>(
+          context: context,
+          builder: (_) => AlertDialog(
+            title: const Row(children: [
+              Icon(Icons.wb_sunny, color: BrocBrand.brocYellow),
+              SizedBox(width: 8),
+              Text('Briefing du jour'),
+            ]),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (shiftsToday.isNotEmpty)
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: BrocBrand.brocRed.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          '${shiftsToday.length} shift(s) aujourd\'hui',
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: BrocBrand.brocYellow),
+                        ),
+                      ),
+                    Text(answer, style: const TextStyle(fontSize: 14)),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Fermer'),
+              ),
+            ],
+          ),
+        );
+      },
+      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(translateErrorFr(e.message)),
+        backgroundColor: Colors.red.shade900,
+      )),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final screens = [
@@ -240,6 +330,11 @@ class _HomeShellState extends State<HomeShell> {
       appBar: AppBar(
         title: const Text('Le Broc'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.wb_sunny),
+            tooltip: 'Briefing matinal Claude',
+            onPressed: _showMorningBriefing,
+          ),
           IconButton(
             icon: const Icon(Icons.logout),
             onPressed: () async {
@@ -631,6 +726,135 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     );
   }
 
+  Future<void> _generateOnboarding(Map<String, dynamic> emp) async {
+    final roles = ((emp['roles'] as List<dynamic>?) ?? const []).cast<String>();
+    if (roles.isEmpty) {
+      _snack('Pas de rôles configurés', isError: true);
+      return;
+    }
+    final role = await showDialog<String>(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: Text('Onboarding pour ${emp['name']} — choisis le rôle'),
+        children: roles.map((r) =>
+          SimpleDialogOption(
+            onPressed: () => Navigator.pop(context, r),
+            child: Text(r),
+          ),
+        ).toList(),
+      ),
+    );
+    if (role == null) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        title: Row(children: [
+          Icon(Icons.school, color: Colors.lightBlueAccent),
+          SizedBox(width: 8),
+          Text('Onboarding'),
+        ]),
+        content: SizedBox(
+          width: 300,
+          height: 100,
+          child: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 12),
+              Text('Claude génère la checklist...'),
+            ]),
+          ),
+        ),
+      ),
+    );
+    final r = await widget.api.command(
+      'onboarding generate --employee ${emp['id']} --role $role --actor manager:seb',
+    );
+    if (!mounted) return;
+    Navigator.pop(context);
+    r.when(
+      success: (data) {
+        if (data['type'] != 'success') {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+          return;
+        }
+        final checklist = data['result'] as Map<String, dynamic>;
+        _showOnboardingChecklist(checklist);
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  void _showOnboardingChecklist(Map<String, dynamic> checklist) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => StatefulBuilder(builder: (ctx, set) {
+        final items = ((checklist['items'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+        final checked = items.where((i) => i['done'] as bool? ?? false).length;
+        return AlertDialog(
+          title: Row(children: [
+            const Icon(Icons.school, color: Colors.lightBlueAccent),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Onboarding ${checklist['role']} ($checked/${items.length})',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ]),
+          content: SizedBox(
+            width: 500,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: items.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final item = entry.value;
+                  final done = item['done'] as bool? ?? false;
+                  return CheckboxListTile(
+                    value: done,
+                    title: Text(
+                      item['label'] as String,
+                      style: TextStyle(
+                        decoration: done ? TextDecoration.lineThrough : null,
+                        color: done ? Colors.grey : null,
+                      ),
+                    ),
+                    onChanged: (v) async {
+                      final r = await widget.api.command(
+                        'onboarding ${v == true ? "check" : "uncheck"} --checklist ${checklist['id']} --item $i --actor employee:${checklist['employee_id']}',
+                      );
+                      r.when(
+                        success: (data) {
+                          if (data['type'] == 'success') {
+                            set(() {
+                              items[i] = {...item, 'done': v ?? false};
+                            });
+                          }
+                        },
+                        failure: (_) {},
+                      );
+                    },
+                    controlAffinity: ListTileControlAffinity.leading,
+                    dense: true,
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Fermer'),
+            ),
+          ],
+        );
+      }),
+    );
+  }
+
   Future<void> _archiveEmployee(String empId) async {
     final emp = _employees.firstWhere((e) => e['id'] == empId);
     final ok = await showDialog<bool>(
@@ -909,6 +1133,16 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                   ],
                                 ),
                               ),
+                              const PopupMenuItem<String>(
+                                value: 'onboarding',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.school, size: 18, color: Colors.lightBlueAccent),
+                                    SizedBox(width: 8),
+                                    Text('Onboarding par rôle'),
+                                  ],
+                                ),
+                              ),
                               PopupMenuItem<String>(
                                 value: 'archive',
                                 enabled: !onShift,
@@ -925,6 +1159,7 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                               if (v == 'archive') _archiveEmployee(id);
                               if (v == 'weekly') _editWeekly(e);
                               if (v == 'roles') _editRoles(e);
+                              if (v == 'onboarding') _generateOnboarding(e);
                             },
                           ),
                         ]),
@@ -1598,7 +1833,9 @@ class _CostsScreenState extends State<CostsScreen> {
   List<Map<String, dynamic>> _employees = [];
   List<Map<String, dynamic>> _rates = [];
   List<Map<String, dynamic>> _consumptions = [];
+  List<Map<String, dynamic>> _shifts = [];
   int _totalConsumptionCents = 0;
+  int _totalTipsCents = 0;
   bool _loading = true;
 
   @override
@@ -1612,6 +1849,7 @@ class _CostsScreenState extends State<CostsScreen> {
     final empR = await widget.api.get('/api/employees');
     final ratesR = await widget.api.command('rate list');
     final consR = await widget.api.command('consumption list');
+    final shiftsR = await widget.api.command('shift list');
     if (!mounted) return;
     setState(() {
       _employees = empR.valueOrNull == null
@@ -1627,8 +1865,69 @@ class _CostsScreenState extends State<CostsScreen> {
             .cast<Map<String, dynamic>>();
         _totalConsumptionCents = result['total_cents'] as int? ?? 0;
       }
+      if (shiftsR.valueOrNull?['type'] == 'success') {
+        _shifts = ((shiftsR.valueOrNull!['result']['shifts'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+        _totalTipsCents = _shifts.fold<int>(
+          0,
+          (a, s) => a + ((s['tip_cents'] as int?) ?? 0),
+        );
+      }
       _loading = false;
     });
+  }
+
+  Future<void> _setTip(Map<String, dynamic> shift) async {
+    final ctrl = TextEditingController(text: ((shift['tip_cents'] as int?) ?? 0).toString());
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Pourboire — shift ${(shift['id'] as String).substring(0, 8)}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Employé : ${_empName(shift['employee_id'] as String)}',
+              style: const TextStyle(fontSize: 11),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: const InputDecoration(
+                labelText: 'Pourboire (cents, 1500 = 15 €)',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Enregistrer')),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final cents = int.tryParse(ctrl.text);
+    if (cents == null || cents < 0) {
+      _snack('Montant invalide', isError: true);
+      return;
+    }
+    final r = await widget.api.command(
+      'tip set --shift ${shift['id']} --cents $cents --actor manager:seb',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Pourboire enregistré ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
   }
 
   void _snack(String s, {bool isError = false}) {
@@ -1846,29 +2145,57 @@ class _CostsScreenState extends State<CostsScreen> {
           : ListView(
               padding: const EdgeInsets.only(bottom: 200),
               children: [
-                // Totals
-                Container(
-                  margin: const EdgeInsets.all(12),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: BrocBrand.brocRed.withValues(alpha: 0.15),
-                    border: Border.all(color: BrocBrand.brocRed),
-                    borderRadius: BorderRadius.circular(12),
+                // Totals : 2 bandeaux side by side
+                Row(children: [
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(12, 12, 6, 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: BrocBrand.brocRed.withValues(alpha: 0.15),
+                        border: Border.all(color: BrocBrand.brocRed),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Conso staff',
+                              style: TextStyle(color: BrocBrand.brocYellow, fontWeight: FontWeight.bold, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(_fmtCents(_totalConsumptionCents),
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                          Text('${_consumptions.length} entries',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Conso staff totale',
-                          style: TextStyle(color: BrocBrand.brocYellow, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 4),
-                      Text(_fmtCents(_totalConsumptionCents),
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 4),
-                      Text('${_consumptions.length} consommations enregistrées',
-                          style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                    ],
+                  Expanded(
+                    child: Container(
+                      margin: const EdgeInsets.fromLTRB(6, 12, 12, 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: BrocBrand.brocYellow.withValues(alpha: 0.15),
+                        border: Border.all(color: BrocBrand.brocYellow),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('💰 Pourboires totaux',
+                              style: TextStyle(color: BrocBrand.brocYellow, fontWeight: FontWeight.bold, fontSize: 12)),
+                          const SizedBox(height: 4),
+                          Text(_fmtCents(_totalTipsCents),
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900)),
+                          Text('${_shifts.where((s) => (s['tip_cents'] as int? ?? 0) > 0).length} shifts',
+                              style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                ]),
+                // Heatmap 7 jours
+                _Heatmap7DaysCard(shifts: _shifts, employees: _employees),
                 // Taux horaires
                 const Padding(
                   padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -1940,8 +2267,212 @@ class _CostsScreenState extends State<CostsScreen> {
                       ),
                     );
                   }),
+                const Divider(),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+                  child: Text('POURBOIRES PAR SHIFT',
+                      style: TextStyle(
+                          color: BrocBrand.brocYellow,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 1)),
+                ),
+                if (_shifts.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Aucun shift enregistré.\nLes shifts terminés apparaîtront ici pour renseigner les pourboires.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                else
+                  ..._shifts.take(15).map((s) {
+                    final tipCents = (s['tip_cents'] as int?) ?? 0;
+                    final hasTip = tipCents > 0;
+                    return ListTile(
+                      dense: true,
+                      leading: Icon(
+                        Icons.savings,
+                        color: hasTip ? Colors.greenAccent : Colors.grey,
+                      ),
+                      title: Text(
+                        '${_empName(s['employee_id'] as String)}  ·  ${_fmtCents(tipCents)}',
+                        style: TextStyle(
+                            fontWeight: hasTip ? FontWeight.bold : FontWeight.normal,
+                            color: hasTip ? null : Colors.grey),
+                      ),
+                      subtitle: Text(
+                        '${_JournalScreenState._fmtTime(s['starts_at'] as String)}  ·  ${s['status']}',
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                      trailing: IconButton(
+                        tooltip: 'Modifier le pourboire',
+                        icon: const Icon(Icons.edit, size: 16),
+                        onPressed: () => _setTip(s),
+                      ),
+                    );
+                  }),
               ],
             ),
+    );
+  }
+}
+
+// ===========================================================================
+// Heatmap 7 jours — somme heures travaillées par employé × jour
+// ===========================================================================
+class _Heatmap7DaysCard extends StatelessWidget {
+  final List<Map<String, dynamic>> shifts;
+  final List<Map<String, dynamic>> employees;
+  const _Heatmap7DaysCard({required this.shifts, required this.employees});
+
+  static const _dayLabels = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
+    // last 7 days (oldest → today)
+    final days = List.generate(
+        7, (i) => DateTime(now.year, now.month, now.day - (6 - i)));
+
+    // For each employee, sum hours per day
+    final grid = <String, Map<int, double>>{};
+    for (final emp in employees) {
+      grid[emp['id'] as String] = {for (var i = 0; i < 7; i++) i: 0};
+    }
+    double maxHours = 0;
+    for (final s in shifts) {
+      final empId = s['employee_id'] as String;
+      if (!grid.containsKey(empId)) continue;
+      final start = DateTime.parse(s['starts_at'] as String).toLocal();
+      final end = s['ends_at'] != null
+          ? DateTime.parse(s['ends_at'] as String).toLocal()
+          : DateTime.now();
+      final duration = end.difference(start).inMinutes / 60.0;
+      for (var i = 0; i < 7; i++) {
+        if (start.year == days[i].year &&
+            start.month == days[i].month &&
+            start.day == days[i].day) {
+          grid[empId]![i] = (grid[empId]![i] ?? 0) + duration;
+          if (grid[empId]![i]! > maxHours) maxHours = grid[empId]![i]!;
+          break;
+        }
+      }
+    }
+
+    Color cellColor(double hours) {
+      if (hours <= 0) return Colors.grey.shade900;
+      final intensity = (maxHours > 0 ? hours / maxHours : 0.0).clamp(0.15, 1.0).toDouble();
+      return BrocBrand.brocRed.withValues(alpha: intensity);
+    }
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xff1f1818),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: BrocBrand.brocRed.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('🔥 ACTIVITÉ 7 DERNIERS JOURS',
+              style: TextStyle(
+                  color: BrocBrand.brocYellow,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                  fontSize: 12)),
+          const SizedBox(height: 8),
+          // Header (day labels)
+          Row(children: [
+            const SizedBox(width: 80),
+            for (var i = 0; i < 7; i++)
+              Expanded(
+                child: Center(
+                  child: Column(children: [
+                    Text(_dayLabels[days[i].weekday - 1],
+                        style: const TextStyle(
+                            fontSize: 10,
+                            color: BrocBrand.brocCream,
+                            fontWeight: FontWeight.bold)),
+                    Text(days[i].day.toString().padLeft(2, '0'),
+                        style: const TextStyle(fontSize: 8, color: Colors.grey)),
+                  ]),
+                ),
+              ),
+          ]),
+          const SizedBox(height: 4),
+          // Rows employees
+          if (employees.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: Text('Aucun employé', style: TextStyle(color: Colors.grey))),
+            )
+          else
+            ...employees.take(8).map((emp) {
+              final empId = emp['id'] as String;
+              final daysHours = grid[empId] ?? const <int, double>{};
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: Row(children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(
+                      emp['name'] as String,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 11),
+                    ),
+                  ),
+                  for (var i = 0; i < 7; i++)
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 1),
+                        child: Tooltip(
+                          message:
+                              '${emp['name']} · ${_dayLabels[days[i].weekday - 1]} ${days[i].day}/${days[i].month}: ${(daysHours[i] ?? 0).toStringAsFixed(1)}h',
+                          child: Container(
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: cellColor(daysHours[i] ?? 0),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: (daysHours[i] ?? 0) > 0
+                                ? Center(
+                                    child: Text(
+                                      (daysHours[i] ?? 0).toStringAsFixed(1),
+                                      style: TextStyle(
+                                          fontSize: 9,
+                                          color: (daysHours[i] ?? 0) > maxHours * 0.5
+                                              ? Colors.white
+                                              : BrocBrand.brocCream,
+                                          fontWeight: FontWeight.bold),
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      ),
+                    ),
+                ]),
+              );
+            }),
+          if (maxHours > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  const Text('Max:', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                  const SizedBox(width: 4),
+                  Container(width: 12, height: 12, color: BrocBrand.brocRed),
+                  const SizedBox(width: 4),
+                  Text('${maxHours.toStringAsFixed(1)}h',
+                      style: const TextStyle(fontSize: 10, color: Colors.grey)),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
