@@ -1,6 +1,7 @@
 import '../entities/sg_break.dart';
 import '../entities/sg_employee.dart';
 import '../entities/sg_event_journal_entry.dart';
+import '../entities/sg_hourly_rate.dart';
 import '../entities/sg_kiosk_session.dart';
 import '../entities/sg_menu_card.dart';
 import '../entities/sg_pdf_export.dart';
@@ -9,6 +10,7 @@ import '../entities/sg_shift.dart';
 import '../entities/sg_shift_segment.dart';
 import '../entities/sg_shopping_item.dart';
 import '../entities/sg_shopping_list.dart';
+import '../entities/sg_staff_consumption.dart';
 import '../entities/sg_supplier.dart';
 import '../failures.dart';
 import '../result.dart';
@@ -85,5 +87,26 @@ abstract interface class SgBrocRepositoryPort {
     DateTime? from,
     DateTime? to,
     int? limit,
+  });
+
+  // ============== Hourly rates (Phase B) ==============
+  Future<Result<SgHourlyRate, SgFailure>> createHourlyRate(SgHourlyRate rate);
+  Future<Result<SgHourlyRate, SgFailure>> updateHourlyRate(SgHourlyRate rate);
+  Future<Result<SgHourlyRate?, SgFailure>> getActiveHourlyRate({
+    required String employeeId,
+    SgEmployeeRole? role,
+    required DateTime at,
+  });
+  Future<Result<List<SgHourlyRate>, SgFailure>> listHourlyRates({String? employeeId});
+
+  // ============== Staff consumption (Phase B) ==============
+  Future<Result<SgStaffConsumption, SgFailure>> createStaffConsumption(SgStaffConsumption c);
+  Future<Result<SgStaffConsumption, SgFailure>> updateStaffConsumption(SgStaffConsumption c);
+  Future<Result<List<SgStaffConsumption>, SgFailure>> listStaffConsumptions({
+    String? employeeId,
+    String? shiftId,
+    DateTime? from,
+    DateTime? to,
+    bool? paid,
   });
 }

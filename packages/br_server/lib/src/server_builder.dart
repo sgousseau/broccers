@@ -98,6 +98,27 @@ class BrServerBuilder {
       clock: clock,
       idGenerator: () => 'q-${genId()}',
     );
+    final setHourlyRate = SetHourlyRateUseCase(
+      repository: repo,
+      clock: clock,
+      idGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final recordConsumption = RecordStaffConsumptionUseCase(
+      repository: repo,
+      clock: clock,
+      idGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final computeShiftCost = ComputeShiftCostUseCase(
+      repository: repo,
+      clock: clock,
+    );
+    final archiveEmployee = ArchiveEmployeeUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
 
     final commands = BrCommandRegistry(
       config: config,
@@ -116,6 +137,10 @@ class BrServerBuilder {
       changeRole: changeRole,
       setWeekly: setWeekly,
       setRoles: setRoles,
+      setHourlyRate: setHourlyRate,
+      recordConsumption: recordConsumption,
+      computeShiftCost: computeShiftCost,
+      archiveEmployee: archiveEmployee,
       uuid: uuid,
       now: now,
     );

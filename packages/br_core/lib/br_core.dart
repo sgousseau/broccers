@@ -34,6 +34,10 @@ export 'src/entities/sg_question.dart';
 export 'src/entities/sg_kiosk_session.dart';
 export 'src/entities/sg_event_journal_entry.dart';
 
+// === Entities — Phase B (taux horaires + conso staff) ===
+export 'src/entities/sg_hourly_rate.dart';
+export 'src/entities/sg_staff_consumption.dart';
+
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
 export 'src/ports/sg_pdf_renderer_port.dart';
@@ -53,3 +57,7 @@ export 'src/usecases/ask_question_usecase.dart';
 export 'src/usecases/change_role_in_shift_usecase.dart';
 export 'src/usecases/set_weekly_default_usecase.dart';
 export 'src/usecases/set_employee_roles_usecase.dart';
+export 'src/usecases/set_hourly_rate_usecase.dart';
+export 'src/usecases/record_staff_consumption_usecase.dart';
+export 'src/usecases/compute_shift_cost_usecase.dart';
+export 'src/usecases/archive_employee_usecase.dart';

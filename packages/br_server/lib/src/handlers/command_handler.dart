@@ -25,6 +25,10 @@ class BrCommandRegistry {
   final ChangeRoleInShiftUseCase _changeRole;
   final SetWeeklyDefaultUseCase _setWeekly;
   final SetEmployeeRolesUseCase _setRoles;
+  final SetHourlyRateUseCase _setHourlyRate;
+  final RecordStaffConsumptionUseCase _recordConsumption;
+  final ComputeShiftCostUseCase _computeShiftCost;
+  final ArchiveEmployeeUseCase _archiveEmployee;
   final Uuid _uuid;
   final DateTime Function() _now;
 
@@ -45,6 +49,10 @@ class BrCommandRegistry {
     required ChangeRoleInShiftUseCase changeRole,
     required SetWeeklyDefaultUseCase setWeekly,
     required SetEmployeeRolesUseCase setRoles,
+    required SetHourlyRateUseCase setHourlyRate,
+    required RecordStaffConsumptionUseCase recordConsumption,
+    required ComputeShiftCostUseCase computeShiftCost,
+    required ArchiveEmployeeUseCase archiveEmployee,
     required Uuid uuid,
     required DateTime Function() now,
   })  : _config = config,
@@ -63,6 +71,10 @@ class BrCommandRegistry {
         _changeRole = changeRole,
         _setWeekly = setWeekly,
         _setRoles = setRoles,
+        _setHourlyRate = setHourlyRate,
+        _recordConsumption = recordConsumption,
+        _computeShiftCost = computeShiftCost,
+        _archiveEmployee = archiveEmployee,
         _uuid = uuid,
         _now = now;
 
@@ -99,6 +111,12 @@ class BrCommandRegistry {
           return _dispatchSupplier(args);
         case 'events':
           return _dispatchEvents(args);
+        case 'rate':
+          return _dispatchRate(args);
+        case 'consumption':
+          return _dispatchConsumption(args);
+        case 'cost':
+          return _dispatchCost(args);
         default:
           return _invalid('unknown command: $group');
       }
@@ -192,6 +210,14 @@ class BrCommandRegistry {
           defaultRole: defaultRole,
           actor: actor,
           reason: reason,
+        );
+        return r.when(success: (e) => _success(e.toJson()), failure: _failureOf);
+      case 'archive':
+        if (rest.isEmpty) return _invalid('employee archive <id> [--actor manager --reason "..."]');
+        final r = await _archiveEmployee(
+          employeeId: rest.first,
+          actor: _opt(rest, '--actor') ?? 'manager',
+          reason: _opt(rest, '--reason'),
         );
         return r.when(success: (e) => _success(e.toJson()), failure: _failureOf);
       case 'set-weekly':
@@ -521,6 +547,104 @@ class BrCommandRegistry {
         return r.when(success: (i) => _success(i.toJson()), failure: _failureOf);
       default:
         return _invalid('shopping: unknown sub "$sub"');
+    }
+  }
+
+  // rate (Phase B)
+  Future<Map<String, dynamic>> _dispatchRate(List<String> args) async {
+    if (args.isEmpty) return _invalid('rate <set|list>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'set':
+        final emp = _opt(rest, '--employee');
+        final cents = int.tryParse(_opt(rest, '--cents') ?? '');
+        final roleArg = _opt(rest, '--role');
+        if (emp == null || cents == null) {
+          return _invalid('rate set --employee <id> --cents <N> [--role X --actor manager --reason "..."]');
+        }
+        SgEmployeeRole? role;
+        if (roleArg != null) {
+          role = SgEmployeeRole.values.where((r) => r.name == roleArg).firstOrNull;
+          if (role == null) return _invalid('unknown role: $roleArg');
+        }
+        final r = await _setHourlyRate(
+          employeeId: emp,
+          role: role,
+          rateCents: cents,
+          actor: _opt(rest, '--actor') ?? 'manager',
+          reason: _opt(rest, '--reason'),
+        );
+        return r.when(success: (h) => _success(h.toJson()), failure: _failureOf);
+      case 'list':
+        final emp = _opt(rest, '--employee');
+        final r = await _repo.listHourlyRates(employeeId: emp);
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'rates': l.map((h) => h.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      default:
+        return _invalid('rate: unknown sub "$sub"');
+    }
+  }
+
+  // consumption (Phase B)
+  Future<Map<String, dynamic>> _dispatchConsumption(List<String> args) async {
+    if (args.isEmpty) return _invalid('consumption <record|list>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'record':
+        final emp = _opt(rest, '--employee');
+        final label = _opt(rest, '--label');
+        final cents = int.tryParse(_opt(rest, '--cents') ?? '');
+        if (emp == null || label == null || cents == null) {
+          return _invalid('consumption record --employee <id> --label "..." --cents <N> [--menu-item <id> --paid]');
+        }
+        final r = await _recordConsumption(
+          employeeId: emp,
+          label: label,
+          amountCents: cents,
+          menuItemId: _opt(rest, '--menu-item'),
+          paid: rest.contains('--paid'),
+          actor: _opt(rest, '--actor') ?? 'system',
+        );
+        return r.when(success: (c) => _success(c.toJson()), failure: _failureOf);
+      case 'list':
+        final emp = _opt(rest, '--employee');
+        final r = await _repo.listStaffConsumptions(employeeId: emp);
+        return r.when(
+          success: (l) {
+            final totalCents = l.fold<int>(0, (a, c) => a + c.amountCents);
+            return _success({
+              'count': l.length,
+              'total_cents': totalCents,
+              'items': l.map((c) => c.toJson()).toList(),
+            });
+          },
+          failure: _failureOf,
+        );
+      default:
+        return _invalid('consumption: unknown sub "$sub"');
+    }
+  }
+
+  // cost (Phase B)
+  Future<Map<String, dynamic>> _dispatchCost(List<String> args) async {
+    if (args.isEmpty) return _invalid('cost <shift>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'shift':
+        final shiftId = _opt(rest, '--shift');
+        if (shiftId == null) return _invalid('cost shift --shift <id>');
+        final r = await _computeShiftCost(shiftId: shiftId);
+        return r.when(success: (b) => _success(b.toJson()), failure: _failureOf);
+      default:
+        return _invalid('cost: unknown sub "$sub"');
     }
   }
 

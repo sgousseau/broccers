@@ -79,3 +79,11 @@ final class SgBrocKioskFailure extends SgBrocFailure {
 final class SgBrocStateFailure extends SgBrocFailure {
   const SgBrocStateFailure(super.message, {super.cause});
 }
+
+final class SgBrocHourlyRateFailure extends SgBrocFailure {
+  const SgBrocHourlyRateFailure(super.message, {super.cause});
+}
+
+final class SgBrocConsumptionFailure extends SgBrocFailure {
+  const SgBrocConsumptionFailure(super.message, {super.cause});
+}

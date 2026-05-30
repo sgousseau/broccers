@@ -275,8 +275,38 @@ class PersonnelScreen extends StatefulWidget {
   State<PersonnelScreen> createState() => _PersonnelScreenState();
 }
 
+/// Traduit les messages d'erreur SgFailure en FR user-friendly.
+String translateErrorFr(String raw) {
+  final m = raw.toLowerCase();
+  if (m.contains('no active shift')) {
+    return "Cet employé n'est pas en service. Démarre un shift d'abord (bouton ▶).";
+  }
+  if (m.contains('already has an active shift')) {
+    return "Déjà en service. Termine le shift en cours avant d'en démarrer un nouveau.";
+  }
+  if (m.contains('already on break')) {
+    return "Déjà en pause. Termine la pause en cours d'abord.";
+  }
+  if (m.contains('cannot hold role')) {
+    return "Ce rôle n'est pas dans les capabilities de cet employé. Configure ses rôles d'abord.";
+  }
+  if (m.contains('cannot resolve role')) {
+    return "Impossible de déterminer le rôle aujourd'hui. Configure le planning hebdo ou le rôle par défaut.";
+  }
+  if (m.contains('has no roles configured')) {
+    return "Cet employé n'a pas de rôle configuré. Ajoute au moins un rôle d'abord.";
+  }
+  if (m.contains('cannot archive') && m.contains('active shift')) {
+    return "Impossible d'archiver : un shift est actif. Termine-le d'abord.";
+  }
+  if (m.contains('not found')) return "Introuvable.";
+  return raw;
+}
+
 class _PersonnelScreenState extends State<PersonnelScreen> {
   List<Map<String, dynamic>> _employees = [];
+  /// Map employeeId → state {'shift': bool, 'role': String?, 'break': bool}
+  Map<String, Map<String, dynamic>> _states = {};
   bool _loading = true;
 
   @override
@@ -289,21 +319,69 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     setState(() => _loading = true);
     final r = await widget.api.get('/api/employees');
     if (!mounted) return;
-    r.when(
-      success: (data) => setState(() {
+    await r.when(
+      success: (data) async {
         _employees = (data['employees'] as List<dynamic>).cast<Map<String, dynamic>>();
-        _loading = false;
-      }),
-      failure: (_) => setState(() => _loading = false),
+        // Charge les états (shift actif + pause active) en parallèle
+        await _loadStates();
+        if (mounted) setState(() => _loading = false);
+      },
+      failure: (_) async {
+        if (mounted) setState(() => _loading = false);
+      },
     );
   }
 
-  Future<void> _clockIn(String empId) async {
-    final r = await widget.api.post('/api/shifts/clock-in', {'employee_id': empId});
+  Future<void> _loadStates() async {
+    final futures = _employees.map((e) async {
+      final id = e['id'] as String;
+      final shiftR = await widget.api.command('shift active --employee $id');
+      final breakR = await widget.api.command('break active --employee $id');
+      final shiftIsActive = shiftR.valueOrNull?['result']?['is_active'] as bool? ?? false;
+      final shift = shiftR.valueOrNull?['result']?['shift'] as Map<String, dynamic>?;
+      final breakIsActive = breakR.valueOrNull?['result']?['is_active'] as bool? ?? false;
+      String? currentRole;
+      if (shiftIsActive && shift != null) {
+        // get current segment via shift segments
+        final segR = await widget.api.command('shift segments --shift ${shift['id']}');
+        final segs = (segR.valueOrNull?['result']?['segments'] as List<dynamic>?) ?? const [];
+        final activeSeg = segs.cast<Map<String, dynamic>>()
+            .where((s) => s['ended_at'] == null).firstOrNull;
+        currentRole = activeSeg?['role'] as String?;
+      }
+      return MapEntry(id, {
+        'shift': shiftIsActive,
+        'shift_id': shift?['id'],
+        'role': currentRole,
+        'break': breakIsActive,
+      });
+    });
+    final entries = await Future.wait(futures);
+    _states = Map.fromEntries(entries);
+  }
+
+  void _snack(String raw, {bool isError = false}) {
+    final msg = isError ? translateErrorFr(raw) : raw;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(msg),
+      backgroundColor: isError ? Colors.red.shade900 : null,
+      duration: Duration(seconds: isError ? 5 : 2),
+    ));
+  }
+
+  Future<void> _clockIn(String empId, {String? roleOverride}) async {
+    final body = <String, dynamic>{'employee_id': empId};
+    if (roleOverride != null) body['role'] = roleOverride;
+    final r = await widget.api.post('/api/shifts/clock-in', body);
     if (!mounted) return;
     r.when(
-      success: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clocked in ✓'))),
-      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))),
+      success: (data) {
+        final segment = data['first_segment'] as Map<String, dynamic>?;
+        final role = segment?['role'] as String? ?? '?';
+        _snack('Clock-in ✓ ($role)');
+        _refresh();
+      },
+      failure: (e) => _snack(e.message, isError: true),
     );
   }
 
@@ -311,8 +389,11 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     final r = await widget.api.post('/api/shifts/clock-out', {'employee_id': empId});
     if (!mounted) return;
     r.when(
-      success: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Clocked out ✓'))),
-      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))),
+      success: (_) {
+        _snack('Clock-out ✓');
+        _refresh();
+      },
+      failure: (e) => _snack(e.message, isError: true),
     );
   }
 
@@ -320,8 +401,82 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
     final r = await widget.api.post('/api/breaks/start', {'employee_id': empId, 'type': 'legal'});
     if (!mounted) return;
     r.when(
-      success: (_) => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Break started ✓'))),
-      failure: (e) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message))),
+      success: (_) {
+        _snack('Pause démarrée ☕');
+        _refresh();
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _changeRole(String empId) async {
+    final emp = _employees.firstWhere((e) => e['id'] == empId);
+    final roles = ((emp['roles'] as List<dynamic>?) ?? const []).cast<String>();
+    final currentRole = _states[empId]?['role'] as String?;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (_) => SimpleDialog(
+        title: Text('Changer le rôle de ${emp['name']} (actuel : ${currentRole ?? "?"})'),
+        children: roles.where((r) => r != currentRole).map((r) =>
+          SimpleDialogOption(
+            child: Text(r),
+            onPressed: () => Navigator.pop(context, r),
+          ),
+        ).toList(),
+      ),
+    );
+    if (choice == null) return;
+    final r = await widget.api.command(
+      'shift change-role --employee $empId --role $choice --actor employee:$empId --reason "rectif employé"',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Rôle changé en $choice ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _archiveEmployee(String empId) async {
+    final emp = _employees.firstWhere((e) => e['id'] == empId);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Archiver ${emp['name']} ?'),
+        content: const Text(
+            'L\'employé sera marqué inactif (soft-delete, données conservées).\n'
+            'Réactivable plus tard via CLI.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Archiver'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    final r = await widget.api.command(
+      'employee archive $empId --actor manager:seb --reason "archivé via UI"',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _snack('Employé archivé ✓');
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
     );
   }
 
@@ -432,17 +587,25 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                   itemCount: _employees.length,
                   itemBuilder: (_, i) {
                     final e = _employees[i];
+                    final id = e['id'] as String;
                     final roles = ((e['roles'] as List<dynamic>?) ?? const [])
                         .cast<String>();
                     final defaultRole = e['default_role'] as String?;
                     final rolesLabel = roles.isEmpty
                         ? 'aucun rôle'
                         : roles.join(' · ');
+                    final state = _states[id];
+                    final onShift = state?['shift'] as bool? ?? false;
+                    final onBreak = state?['break'] as bool? ?? false;
+                    final currentRole = state?['role'] as String?;
+                    final canChangeRole = onShift && roles.length > 1;
                     return Card(
                       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: BrocBrand.brocRed,
+                          backgroundColor: onShift
+                              ? (onBreak ? Colors.orange : Colors.green)
+                              : BrocBrand.brocRed,
                           child: Text(
                             (e['name'] as String).isNotEmpty
                                 ? (e['name'] as String)[0].toUpperCase()
@@ -452,8 +615,45 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                 fontWeight: FontWeight.bold),
                           ),
                         ),
-                        title: Text(e['name'] as String,
-                            style: const TextStyle(fontWeight: FontWeight.bold)),
+                        title: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Flexible(
+                              child: Text(e['name'] as String,
+                                  style: const TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                            const SizedBox(width: 8),
+                            if (onShift)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: onBreak ? Colors.orange : Colors.green,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  onBreak
+                                      ? 'EN PAUSE'
+                                      : 'EN SERVICE${currentRole != null ? " · $currentRole" : ""}',
+                                  style: const TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.black),
+                                ),
+                              )
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade800,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: const Text(
+                                  'OFF',
+                                  style: TextStyle(fontSize: 10, color: Colors.grey),
+                                ),
+                              ),
+                          ],
+                        ),
                         subtitle: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -466,21 +666,56 @@ class _PersonnelScreenState extends State<PersonnelScreen> {
                                 style: const TextStyle(fontSize: 11)),
                           ],
                         ),
-                        trailing: Wrap(spacing: 4, children: [
+                        trailing: Wrap(spacing: 0, children: [
                           IconButton(
-                            tooltip: 'Démarrer le shift (clock-in)',
-                            icon: const Icon(Icons.play_circle_fill, color: Colors.greenAccent),
-                            onPressed: () => _clockIn(e['id'] as String),
+                            tooltip: onShift
+                                ? 'Déjà en service — termine le shift d\'abord'
+                                : 'Démarrer le shift (clock-in)',
+                            icon: Icon(Icons.play_circle_fill,
+                                color: onShift ? Colors.grey : Colors.greenAccent),
+                            onPressed: onShift ? null : () => _clockIn(id),
+                          ),
+                          if (canChangeRole)
+                            IconButton(
+                              tooltip: 'Changer de rôle en cours de shift',
+                              icon: const Icon(Icons.swap_horiz, color: Colors.purpleAccent),
+                              onPressed: () => _changeRole(id),
+                            ),
+                          IconButton(
+                            tooltip: onShift && !onBreak
+                                ? 'Démarrer une pause'
+                                : (onBreak ? 'Déjà en pause' : 'Pas en service — clock-in d\'abord'),
+                            icon: Icon(Icons.local_cafe,
+                                color: (onShift && !onBreak) ? Colors.orange : Colors.grey),
+                            onPressed: (onShift && !onBreak) ? () => _startBreak(id) : null,
                           ),
                           IconButton(
-                            tooltip: 'Démarrer une pause',
-                            icon: const Icon(Icons.local_cafe, color: Colors.orange),
-                            onPressed: () => _startBreak(e['id'] as String),
+                            tooltip: onShift
+                                ? 'Terminer le shift (clock-out)'
+                                : 'Pas en service',
+                            icon: Icon(Icons.stop_circle,
+                                color: onShift ? Colors.redAccent : Colors.grey),
+                            onPressed: onShift ? () => _clockOut(id) : null,
                           ),
-                          IconButton(
-                            tooltip: 'Terminer le shift (clock-out) — n\'efface PAS l\'employé',
-                            icon: const Icon(Icons.stop_circle, color: Colors.redAccent),
-                            onPressed: () => _clockOut(e['id'] as String),
+                          PopupMenuButton<String>(
+                            tooltip: 'Plus d\'actions',
+                            icon: const Icon(Icons.more_vert),
+                            itemBuilder: (_) => [
+                              PopupMenuItem<String>(
+                                value: 'archive',
+                                enabled: !onShift,
+                                child: Row(
+                                  children: const [
+                                    Icon(Icons.archive, size: 18, color: Colors.redAccent),
+                                    SizedBox(width: 8),
+                                    Text('Archiver employé'),
+                                  ],
+                                ),
+                              ),
+                            ],
+                            onSelected: (v) {
+                              if (v == 'archive') _archiveEmployee(id);
+                            },
                           ),
                         ]),
                       ),

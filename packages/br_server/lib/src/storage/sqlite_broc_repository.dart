@@ -168,6 +168,32 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         created_by TEXT NOT NULL
       );
     ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS hourly_rates (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        role TEXT,
+        rate_cents INTEGER NOT NULL,
+        valid_from TEXT NOT NULL,
+        valid_to TEXT,
+        source TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS staff_consumptions (
+        id TEXT PRIMARY KEY,
+        employee_id TEXT NOT NULL REFERENCES employees(id) ON DELETE CASCADE,
+        shift_id TEXT,
+        menu_item_id TEXT,
+        label TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        consumed_at TEXT NOT NULL,
+        paid INTEGER NOT NULL DEFAULT 0,
+        note TEXT
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_rates_emp ON hourly_rates(employee_id, role, valid_from);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_consumptions_emp ON staff_consumptions(employee_id, consumed_at);');
 
     // === Phase A migrations from v0.1 → v0.2 (idempotent) ===
     final empCols = db
@@ -860,6 +886,167 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
               payload: jsonDecode(r['payload_json'] as String)
                   as Map<String, dynamic>,
               reason: r['reason'] as String?,
+            )).toList();
+      });
+
+  // ============== Hourly rates (Phase B) ==============
+  @override
+  Future<Result<SgHourlyRate, SgFailure>> createHourlyRate(SgHourlyRate r) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO hourly_rates(id, employee_id, role, rate_cents, valid_from, valid_to, source) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [
+            r.id,
+            r.employeeId,
+            r.role?.name,
+            r.rateCents,
+            r.validFrom.toIso8601String(),
+            r.validTo?.toIso8601String(),
+            r.source,
+          ],
+        );
+        return r;
+      });
+
+  @override
+  Future<Result<SgHourlyRate, SgFailure>> updateHourlyRate(SgHourlyRate r) async => _wrap(() {
+        _db.execute(
+          'UPDATE hourly_rates SET role = ?, rate_cents = ?, valid_from = ?, valid_to = ?, source = ? WHERE id = ?',
+          [
+            r.role?.name,
+            r.rateCents,
+            r.validFrom.toIso8601String(),
+            r.validTo?.toIso8601String(),
+            r.source,
+            r.id,
+          ],
+        );
+        return r;
+      });
+
+  @override
+  Future<Result<SgHourlyRate?, SgFailure>> getActiveHourlyRate({
+    required String employeeId,
+    SgEmployeeRole? role,
+    required DateTime at,
+  }) async =>
+      _wrap(() {
+        final atStr = at.toIso8601String();
+        final rs = role == null
+            ? _db.select(
+                'SELECT * FROM hourly_rates WHERE employee_id = ? AND role IS NULL AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) ORDER BY valid_from DESC LIMIT 1',
+                [employeeId, atStr, atStr],
+              )
+            : _db.select(
+                'SELECT * FROM hourly_rates WHERE employee_id = ? AND role = ? AND valid_from <= ? AND (valid_to IS NULL OR valid_to > ?) ORDER BY valid_from DESC LIMIT 1',
+                [employeeId, role.name, atStr, atStr],
+              );
+        return rs.isEmpty ? null : _rowToRate(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgHourlyRate>, SgFailure>> listHourlyRates({String? employeeId}) async => _wrap(() {
+        final rs = employeeId == null
+            ? _db.select('SELECT * FROM hourly_rates ORDER BY employee_id, valid_from DESC')
+            : _db.select(
+                'SELECT * FROM hourly_rates WHERE employee_id = ? ORDER BY valid_from DESC',
+                [employeeId],
+              );
+        return rs.map(_rowToRate).toList();
+      });
+
+  SgHourlyRate _rowToRate(Row r) => SgHourlyRate(
+        id: r['id'] as String,
+        employeeId: r['employee_id'] as String,
+        role: r['role'] != null
+            ? SgEmployeeRole.fromName(r['role'] as String)
+            : null,
+        rateCents: r['rate_cents'] as int,
+        validFrom: DateTime.parse(r['valid_from'] as String),
+        validTo: r['valid_to'] != null
+            ? DateTime.parse(r['valid_to'] as String)
+            : null,
+        source: r['source'] as String?,
+      );
+
+  // ============== Staff consumption (Phase B) ==============
+  @override
+  Future<Result<SgStaffConsumption, SgFailure>> createStaffConsumption(SgStaffConsumption c) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO staff_consumptions(id, employee_id, shift_id, menu_item_id, label, amount_cents, consumed_at, paid, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            c.id,
+            c.employeeId,
+            c.shiftId,
+            c.menuItemId,
+            c.label,
+            c.amountCents,
+            c.consumedAt.toIso8601String(),
+            c.paid ? 1 : 0,
+            c.note,
+          ],
+        );
+        return c;
+      });
+
+  @override
+  Future<Result<SgStaffConsumption, SgFailure>> updateStaffConsumption(SgStaffConsumption c) async => _wrap(() {
+        _db.execute(
+          'UPDATE staff_consumptions SET shift_id = ?, menu_item_id = ?, label = ?, amount_cents = ?, paid = ?, note = ? WHERE id = ?',
+          [
+            c.shiftId,
+            c.menuItemId,
+            c.label,
+            c.amountCents,
+            c.paid ? 1 : 0,
+            c.note,
+            c.id,
+          ],
+        );
+        return c;
+      });
+
+  @override
+  Future<Result<List<SgStaffConsumption>, SgFailure>> listStaffConsumptions({
+    String? employeeId,
+    String? shiftId,
+    DateTime? from,
+    DateTime? to,
+    bool? paid,
+  }) async =>
+      _wrap(() {
+        var sql = 'SELECT * FROM staff_consumptions WHERE 1=1';
+        final params = <Object>[];
+        if (employeeId != null) {
+          sql += ' AND employee_id = ?';
+          params.add(employeeId);
+        }
+        if (shiftId != null) {
+          sql += ' AND shift_id = ?';
+          params.add(shiftId);
+        }
+        if (from != null) {
+          sql += ' AND consumed_at >= ?';
+          params.add(from.toIso8601String());
+        }
+        if (to != null) {
+          sql += ' AND consumed_at <= ?';
+          params.add(to.toIso8601String());
+        }
+        if (paid != null) {
+          sql += ' AND paid = ?';
+          params.add(paid ? 1 : 0);
+        }
+        sql += ' ORDER BY consumed_at DESC';
+        return _db.select(sql, params).map((r) => SgStaffConsumption(
+              id: r['id'] as String,
+              employeeId: r['employee_id'] as String,
+              shiftId: r['shift_id'] as String?,
+              menuItemId: r['menu_item_id'] as String?,
+              label: r['label'] as String,
+              amountCents: r['amount_cents'] as int,
+              consumedAt: DateTime.parse(r['consumed_at'] as String),
+              paid: (r['paid'] as int) == 1,
+              note: r['note'] as String?,
             )).toList();
       });
 
