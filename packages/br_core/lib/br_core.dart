@@ -41,11 +41,17 @@ export 'src/entities/sg_staff_consumption.dart';
 // === Entities — Phase D (onboarding) ===
 export 'src/entities/sg_onboarding_checklist.dart';
 
+// === Entities — Phase E (kitchen tickets + recipes + cooking tasks) ===
+export 'src/entities/sg_kitchen_ticket.dart';
+export 'src/entities/sg_recipe.dart';
+export 'src/entities/sg_cooking_task.dart';
+
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
 export 'src/ports/sg_pdf_renderer_port.dart';
 export 'src/ports/sg_question_port.dart';
 export 'src/ports/sg_clock_port.dart';
+export 'src/ports/sg_voice_parser_port.dart';
 
 // === UseCases ===
 export 'src/usecases/clock_in_usecase.dart';
@@ -68,3 +74,6 @@ export 'src/usecases/record_shift_tip_usecase.dart';
 export 'src/usecases/generate_morning_briefing_usecase.dart';
 export 'src/usecases/generate_onboarding_checklist_usecase.dart';
 export 'src/usecases/check_onboarding_item_usecase.dart';
+export 'src/usecases/parse_voice_order_usecase.dart';
+export 'src/usecases/send_ticket_to_kitchen_usecase.dart';
+export 'src/usecases/cooking_task_lifecycle_usecase.dart';

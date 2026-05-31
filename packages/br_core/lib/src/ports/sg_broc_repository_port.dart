@@ -1,12 +1,15 @@
 import '../entities/sg_break.dart';
+import '../entities/sg_cooking_task.dart';
 import '../entities/sg_employee.dart';
 import '../entities/sg_event_journal_entry.dart';
 import '../entities/sg_hourly_rate.dart';
 import '../entities/sg_kiosk_session.dart';
+import '../entities/sg_kitchen_ticket.dart';
 import '../entities/sg_menu_card.dart';
 import '../entities/sg_onboarding_checklist.dart';
 import '../entities/sg_pdf_export.dart';
 import '../entities/sg_question.dart';
+import '../entities/sg_recipe.dart';
 import '../entities/sg_shift.dart';
 import '../entities/sg_shift_segment.dart';
 import '../entities/sg_shopping_item.dart';
@@ -116,4 +119,34 @@ abstract interface class SgBrocRepositoryPort {
   Future<Result<SgOnboardingChecklist, SgFailure>> updateOnboardingChecklist(SgOnboardingChecklist cl);
   Future<Result<SgOnboardingChecklist?, SgFailure>> getOnboardingChecklist(String id);
   Future<Result<List<SgOnboardingChecklist>, SgFailure>> listOnboardingChecklists({String? employeeId});
+
+  // ============== Kitchen tickets (Phase E1) ==============
+  Future<Result<SgKitchenTicket, SgFailure>> createKitchenTicket(SgKitchenTicket t);
+  Future<Result<SgKitchenTicket, SgFailure>> updateKitchenTicket(SgKitchenTicket t);
+  Future<Result<SgKitchenTicket?, SgFailure>> getKitchenTicket(String id);
+  Future<Result<List<SgKitchenTicket>, SgFailure>> listKitchenTickets({
+    SgKitchenTicketStatus? status,
+    DateTime? from,
+    DateTime? to,
+    int? limit,
+  });
+  Future<Result<SgKitchenTicketItem, SgFailure>> updateKitchenTicketItem(SgKitchenTicketItem item);
+
+  // ============== Recipes (Phase E2) ==============
+  Future<Result<SgRecipe, SgFailure>> createRecipe(SgRecipe r);
+  Future<Result<SgRecipe, SgFailure>> updateRecipe(SgRecipe r);
+  Future<Result<SgRecipe?, SgFailure>> getRecipe(String id);
+  Future<Result<SgRecipe?, SgFailure>> getRecipeForMenuItem(String menuItemId);
+  Future<Result<List<SgRecipe>, SgFailure>> listRecipes();
+
+  // ============== Cooking tasks (Phase E2) ==============
+  Future<Result<SgCookingTask, SgFailure>> createCookingTask(SgCookingTask t);
+  Future<Result<SgCookingTask, SgFailure>> updateCookingTask(SgCookingTask t);
+  Future<Result<SgCookingTask?, SgFailure>> getCookingTask(String id);
+  Future<Result<List<SgCookingTask>, SgFailure>> listCookingTasks({
+    String? ticketItemId,
+    SgCookingTaskStatus? status,
+    DateTime? from,
+    DateTime? to,
+  });
 }

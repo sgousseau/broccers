@@ -7,6 +7,7 @@ import 'package:shelf/shelf_io.dart' as shelf_io;
 import 'package:uuid/uuid.dart';
 
 import 'adapters/claude_cli_question.dart';
+import 'adapters/claude_voice_parser.dart';
 import 'adapters/pdf_dart_menu_renderer.dart';
 import 'auth/pin_auth_service.dart';
 import 'config.dart';
@@ -39,6 +40,10 @@ class BrServerBuilder {
 
     final pdf = const PdfDartMenuRenderer();
     final question = ClaudeCliQuestion(claudeCliPath: config.claudeCliPath);
+    final voiceParser = ClaudeVoiceParser(
+      claudeCliPath: config.claudeCliPath,
+      whisperUrl: Platform.environment['BR_WHISPER_URL'],
+    );
 
     final uuid = const Uuid();
     final clock = const SystemClockPort();
@@ -143,6 +148,30 @@ class BrServerBuilder {
       clock: clock,
       eventIdGenerator: () => 'evt-${genId()}',
     );
+    final parseVoiceOrder = ParseVoiceOrderUseCase(
+      repository: repo,
+      parser: voiceParser,
+      clock: clock,
+      ticketIdGenerator: () => genId(),
+      itemIdGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final sendTicketToKitchen = SendTicketToKitchenUseCase(
+      repository: repo,
+      clock: clock,
+      taskIdGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final startCookingTask = StartCookingTaskUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final completeCookingTask = CompleteCookingTaskUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
 
     final commands = BrCommandRegistry(
       config: config,
@@ -169,6 +198,10 @@ class BrServerBuilder {
       generateBriefing: generateBriefing,
       generateOnboarding: generateOnboarding,
       checkOnboardingItem: checkOnboardingItem,
+      parseVoiceOrder: parseVoiceOrder,
+      sendTicketToKitchen: sendTicketToKitchen,
+      startCookingTask: startCookingTask,
+      completeCookingTask: completeCookingTask,
       uuid: uuid,
       now: now,
     );

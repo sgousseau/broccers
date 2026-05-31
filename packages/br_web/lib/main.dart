@@ -320,6 +320,7 @@ class _HomeShellState extends State<HomeShell> {
   Widget build(BuildContext context) {
     final screens = [
       PersonnelScreen(api: widget.api),
+      KitchenScreen(api: widget.api),
       MenuScreen(api: widget.api),
       ShoppingScreen(api: widget.api),
       QuestionScreen(api: widget.api),
@@ -354,6 +355,7 @@ class _HomeShellState extends State<HomeShell> {
         labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.groups), label: 'Personnel'),
+          NavigationDestination(icon: Icon(Icons.restaurant), label: 'Cuisine'),
           NavigationDestination(icon: Icon(Icons.menu_book), label: 'Carte'),
           NavigationDestination(icon: Icon(Icons.shopping_cart), label: 'Courses'),
           NavigationDestination(icon: Icon(Icons.psychology), label: 'Question'),
@@ -2473,6 +2475,589 @@ class _Heatmap7DaysCard extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+// ===========================================================================
+// Cuisine — kanban tickets + cooking tasks + commande vocale
+// ===========================================================================
+class KitchenScreen extends StatefulWidget {
+  final BrWebApi api;
+  const KitchenScreen({super.key, required this.api});
+  @override
+  State<KitchenScreen> createState() => _KitchenScreenState();
+}
+
+class _KitchenScreenState extends State<KitchenScreen> {
+  List<Map<String, dynamic>> _tickets = [];
+  List<Map<String, dynamic>> _tasks = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _refresh();
+  }
+
+  Future<void> _refresh() async {
+    setState(() => _loading = true);
+    final tR = await widget.api.command('ticket list');
+    final cR = await widget.api.command('cooking list');
+    if (!mounted) return;
+    setState(() {
+      if (tR.valueOrNull?['type'] == 'success') {
+        _tickets = ((tR.valueOrNull!['result']['tickets'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+      }
+      if (cR.valueOrNull?['type'] == 'success') {
+        _tasks = ((cR.valueOrNull!['result']['tasks'] as List<dynamic>?) ?? const [])
+            .cast<Map<String, dynamic>>();
+      }
+      _loading = false;
+    });
+  }
+
+  void _snack(String s, {bool isError = false}) {
+    final m = isError ? translateErrorFr(s) : s;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(m),
+      backgroundColor: isError ? Colors.red.shade900 : null,
+    ));
+  }
+
+  Future<void> _newVoiceOrder() async {
+    final textCtrl = TextEditingController();
+    final tableCtrl = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Row(children: [
+          Icon(Icons.mic, color: BrocBrand.brocRed),
+          SizedBox(width: 8),
+          Text('Nouvelle commande'),
+        ]),
+        content: SizedBox(
+          width: 480,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Dicte la commande à voix haute (utilise la dictée iOS/macOS) ou tape-la.\n'
+                'Claude va la parser en items structurés + table.',
+                style: TextStyle(fontSize: 11, color: Color(0xff9ca3af)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: tableCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Table (optionnel — Claude détecte sinon)',
+                ),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: textCtrl,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: 'Commande',
+                  hintText: 'ex: « table 5 deux ricards une entrecôte saignante frites un magret rosé »',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Annuler')),
+          FilledButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Parser via Claude'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true || textCtrl.text.trim().isEmpty) return;
+
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        content: SizedBox(
+          width: 280,
+          height: 80,
+          child: Center(
+            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+              CircularProgressIndicator(color: BrocBrand.brocRed),
+              SizedBox(height: 8),
+              Text('Claude parse la commande...'),
+            ]),
+          ),
+        ),
+      ),
+    );
+    final escapedText = textCtrl.text.replaceAll('"', '\\"');
+    final tableArg =
+        tableCtrl.text.isNotEmpty ? ' --table ${tableCtrl.text}' : '';
+    final r = await widget.api.command(
+      'ticket parse --text "$escapedText"$tableArg --actor server',
+    );
+    if (!mounted) return;
+    Navigator.pop(context);
+    r.when(
+      success: (data) {
+        if (data['type'] != 'success') {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+          return;
+        }
+        final ticket = data['result'] as Map<String, dynamic>;
+        _showDraftPreview(ticket);
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  void _showDraftPreview(Map<String, dynamic> ticket) {
+    final items = ((ticket['items'] as List<dynamic>?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Row(children: [
+          const Icon(Icons.check_circle, color: Colors.greenAccent),
+          const SizedBox(width: 8),
+          Text('Draft · table ${ticket['table_number'] ?? "?"}'),
+        ]),
+        content: SizedBox(
+          width: 500,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (ticket['voice_transcript'] != null)
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xff1f1818),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('« ${ticket['voice_transcript']} »',
+                        style: const TextStyle(fontStyle: FontStyle.italic, fontSize: 11)),
+                  ),
+                ...items.map((i) {
+                  final mods = ((i['modifiers'] as List<dynamic>?) ?? const []).cast<String>();
+                  return ListTile(
+                    dense: true,
+                    leading: CircleAvatar(
+                      radius: 12,
+                      backgroundColor: BrocBrand.brocRed,
+                      child: Text('${i['quantity']}',
+                          style: const TextStyle(fontSize: 11, color: Colors.white)),
+                    ),
+                    title: Text(i['label'] as String,
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (mods.isNotEmpty)
+                          Text(mods.join(' · '),
+                              style: const TextStyle(color: BrocBrand.brocYellow, fontSize: 11)),
+                        if (i['notes'] != null)
+                          Text('Notes: ${i['notes']}',
+                              style: const TextStyle(fontSize: 11, color: Colors.orange)),
+                      ],
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annuler')),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(backgroundColor: Colors.green),
+            onPressed: () async {
+              Navigator.pop(context);
+              final r = await widget.api.command('ticket send ${ticket['id']}');
+              if (!mounted) return;
+              r.when(
+                success: (data) {
+                  if (data['type'] == 'success') {
+                    _snack('Ticket envoyé en cuisine ✓');
+                    _refresh();
+                  } else {
+                    _snack(data['message']?.toString() ?? 'erreur', isError: true);
+                  }
+                },
+                failure: (e) => _snack(e.message, isError: true),
+              );
+            },
+            icon: const Icon(Icons.send),
+            label: const Text('Envoyer en cuisine'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _changeItemStatus(String itemId, String status) async {
+    final r = await widget.api.command(
+      'ticket item-status --item $itemId --status $status',
+    );
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Future<void> _toggleTask(Map<String, dynamic> task) async {
+    final status = task['status'] as String;
+    final id = task['id'] as String;
+    String action;
+    if (status == 'pending') {
+      action = 'cooking start $id';
+    } else if (status == 'inProgress') {
+      action = 'cooking complete $id';
+    } else {
+      return;
+    }
+    final r = await widget.api.command(action);
+    if (!mounted) return;
+    r.when(
+      success: (data) {
+        if (data['type'] == 'success') {
+          _refresh();
+        } else {
+          _snack(data['message']?.toString() ?? 'erreur', isError: true);
+        }
+      },
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
+  Color _statusColor(String s) => switch (s) {
+        'voiceDraft' => Colors.purpleAccent,
+        'pendingKitchen' => Colors.orange,
+        'inProgress' => Colors.blueAccent,
+        'ready' => Colors.greenAccent,
+        'served' => Colors.grey,
+        'cancelled' => Colors.redAccent,
+        _ => Colors.white,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final drafts = _tickets.where((t) => t['status'] == 'voiceDraft').toList();
+    final pending = _tickets.where((t) => t['status'] == 'pendingKitchen').toList();
+    final inProgress = _tickets.where((t) => t['status'] == 'inProgress').toList();
+    final ready = _tickets.where((t) => t['status'] == 'ready').toList();
+    final pendingTasks = _tasks.where((t) => t['status'] == 'pending').toList();
+    final activeTasks = _tasks.where((t) => t['status'] == 'inProgress').toList();
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _newVoiceOrder,
+        icon: const Icon(Icons.mic),
+        label: const Text('Nouvelle commande vocale'),
+        backgroundColor: BrocBrand.brocRed,
+        foregroundColor: BrocBrand.brocCream,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.only(bottom: 200),
+              children: [
+                if (drafts.isNotEmpty)
+                  _SectionHeader(
+                      label: 'DRAFTS — à envoyer en cuisine',
+                      count: drafts.length,
+                      color: Colors.purpleAccent),
+                ...drafts.map((t) => _TicketCard(
+                      ticket: t,
+                      statusColor: _statusColor(t['status'] as String),
+                      tasksForTicket: const [],
+                      onSend: () async {
+                        final r = await widget.api.command('ticket send ${t['id']}');
+                        r.when(
+                          success: (data) {
+                            if (data['type'] == 'success') {
+                              _snack('Envoyé ✓');
+                              _refresh();
+                            } else {
+                              _snack(data['message']?.toString() ?? 'erreur', isError: true);
+                            }
+                          },
+                          failure: (e) => _snack(e.message, isError: true),
+                        );
+                      },
+                    )),
+                if (pending.isNotEmpty || inProgress.isNotEmpty)
+                  _SectionHeader(
+                      label: 'CUISINE EN COURS',
+                      count: pending.length + inProgress.length,
+                      color: Colors.orange),
+                ...[...pending, ...inProgress].map((t) {
+                  final tasksFor = _tasks.where((task) {
+                    final items = (t['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+                    return items.any((i) => i['id'] == task['ticket_item_id']);
+                  }).toList();
+                  return _TicketCard(
+                    ticket: t,
+                    statusColor: _statusColor(t['status'] as String),
+                    tasksForTicket: tasksFor,
+                    onItemStatus: _changeItemStatus,
+                    onTaskTap: _toggleTask,
+                  );
+                }),
+                if (ready.isNotEmpty)
+                  _SectionHeader(
+                      label: 'PRÊT À SERVIR',
+                      count: ready.length,
+                      color: Colors.greenAccent),
+                ...ready.map((t) => _TicketCard(
+                      ticket: t,
+                      statusColor: _statusColor(t['status'] as String),
+                      tasksForTicket: const [],
+                    )),
+                const SizedBox(height: 16),
+                _SectionHeader(
+                    label: 'TÂCHES CUISINE',
+                    count: pendingTasks.length + activeTasks.length,
+                    color: BrocBrand.brocYellow),
+                if (pendingTasks.isEmpty && activeTasks.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.all(16),
+                    child: Text(
+                      'Aucune tâche en cours.\n'
+                      'Les tâches apparaissent quand un ticket est envoyé en cuisine.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                else ...[
+                  ...activeTasks.map((t) => _CookingTaskTile(task: t, onTap: () => _toggleTask(t))),
+                  ...pendingTasks.map((t) => _CookingTaskTile(task: t, onTap: () => _toggleTask(t))),
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  final String label;
+  final int count;
+  final Color color;
+  const _SectionHeader({required this.label, required this.count, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Row(children: [
+        Container(width: 8, height: 16, color: color),
+        const SizedBox(width: 8),
+        Text(label,
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, letterSpacing: 1)),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(8)),
+          child: Text('$count',
+              style: const TextStyle(color: Colors.black, fontSize: 11, fontWeight: FontWeight.bold)),
+        ),
+      ]),
+    );
+  }
+}
+
+class _TicketCard extends StatelessWidget {
+  final Map<String, dynamic> ticket;
+  final Color statusColor;
+  final List<Map<String, dynamic>> tasksForTicket;
+  final VoidCallback? onSend;
+  final void Function(String itemId, String status)? onItemStatus;
+  final void Function(Map<String, dynamic> task)? onTaskTap;
+
+  const _TicketCard({
+    required this.ticket,
+    required this.statusColor,
+    required this.tasksForTicket,
+    this.onSend,
+    this.onItemStatus,
+    this.onTaskTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final items = ((ticket['items'] as List<dynamic>?) ?? const [])
+        .cast<Map<String, dynamic>>();
+    final table = ticket['table_number'];
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      child: Padding(
+        padding: const EdgeInsets.all(8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.2),
+                  border: Border.all(color: statusColor),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  table != null ? 'TABLE $table' : 'PAS DE TABLE',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: statusColor),
+                ),
+              ),
+              const Spacer(),
+              Text(_JournalScreenState._fmtTime(ticket['created_at'] as String),
+                  style: const TextStyle(fontSize: 10, color: Colors.grey)),
+              if (onSend != null)
+                IconButton(
+                  icon: const Icon(Icons.send, color: Colors.greenAccent, size: 18),
+                  tooltip: 'Envoyer en cuisine',
+                  onPressed: onSend,
+                ),
+            ]),
+            const SizedBox(height: 4),
+            ...items.map((i) {
+              final mods = ((i['modifiers'] as List<dynamic>?) ?? const []).cast<String>();
+              final iStatus = i['status'] as String;
+              final iconColor = switch (iStatus) {
+                'pending' => Colors.grey,
+                'cooking' => Colors.orange,
+                'ready' => Colors.greenAccent,
+                'served' => Colors.green,
+                _ => Colors.white,
+              };
+              return ListTile(
+                dense: true,
+                contentPadding: EdgeInsets.zero,
+                leading: Text('${i['quantity']}×',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: BrocBrand.brocYellow)),
+                title: Text(i['label'] as String,
+                    style: TextStyle(
+                        fontSize: 13,
+                        decoration: iStatus == 'served' ? TextDecoration.lineThrough : null,
+                        color: iStatus == 'served' ? Colors.grey : null)),
+                subtitle: mods.isNotEmpty
+                    ? Text(mods.join(' · '),
+                        style: const TextStyle(color: BrocBrand.brocYellow, fontSize: 10))
+                    : null,
+                trailing: onItemStatus == null
+                    ? Icon(Icons.circle, size: 12, color: iconColor)
+                    : PopupMenuButton<String>(
+                        icon: Icon(Icons.circle, size: 14, color: iconColor),
+                        tooltip: 'Statut item',
+                        itemBuilder: (_) => const [
+                          PopupMenuItem(value: 'pending', child: Text('Pending')),
+                          PopupMenuItem(value: 'cooking', child: Text('Cooking')),
+                          PopupMenuItem(value: 'ready', child: Text('Ready')),
+                          PopupMenuItem(value: 'served', child: Text('Served')),
+                          PopupMenuItem(value: 'cancelled', child: Text('86 (annulé)')),
+                        ],
+                        onSelected: (v) => onItemStatus!(i['id'] as String, v),
+                      ),
+              );
+            }),
+            if (tasksForTicket.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: tasksForTicket.map((task) {
+                    final s = task['status'] as String;
+                    final isOverdue = task['is_overdue'] as bool? ?? false;
+                    final c = s == 'done'
+                        ? Colors.green
+                        : s == 'inProgress'
+                            ? (isOverdue ? Colors.red : Colors.orange)
+                            : Colors.grey;
+                    return GestureDetector(
+                      onTap: onTaskTap == null ? null : () => onTaskTap!(task),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: c),
+                          borderRadius: BorderRadius.circular(4),
+                          color: c.withValues(alpha: 0.1),
+                        ),
+                        child: Text(task['label'] as String,
+                            style: TextStyle(fontSize: 10, color: c)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CookingTaskTile extends StatelessWidget {
+  final Map<String, dynamic> task;
+  final VoidCallback onTap;
+  const _CookingTaskTile({required this.task, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final status = task['status'] as String;
+    final isOverdue = task['is_overdue'] as bool? ?? false;
+    final elapsedMs = task['elapsed_ms'] as int?;
+    final expectedMs = task['expected_duration_ms'] as int;
+    final color = status == 'done'
+        ? Colors.green
+        : status == 'inProgress'
+            ? (isOverdue ? Colors.red : Colors.orange)
+            : Colors.grey;
+    return ListTile(
+      dense: true,
+      leading: Icon(
+        status == 'done'
+            ? Icons.check_circle
+            : status == 'inProgress'
+                ? Icons.timer
+                : Icons.radio_button_unchecked,
+        color: color,
+      ),
+      title: Text(task['label'] as String,
+          style: TextStyle(
+              decoration: status == 'done' ? TextDecoration.lineThrough : null,
+              color: status == 'done' ? Colors.grey : null)),
+      subtitle: Text(
+        elapsedMs != null
+            ? '${(elapsedMs / 60000).toStringAsFixed(1)}min écoulées · ${(expectedMs / 60000).toStringAsFixed(0)}min prévues${isOverdue ? "  ⚠ DÉPASSÉ" : ""}'
+            : '${(expectedMs / 60000).toStringAsFixed(0)}min prévues',
+        style: TextStyle(fontSize: 11, color: isOverdue ? Colors.red : null),
+      ),
+      trailing: status == 'done'
+          ? null
+          : TextButton(
+              onPressed: onTap,
+              child: Text(status == 'pending' ? 'Démarrer' : 'Terminer',
+                  style: TextStyle(color: color)),
+            ),
     );
   }
 }

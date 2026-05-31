@@ -33,6 +33,10 @@ class BrCommandRegistry {
   final GenerateMorningBriefingUseCase _generateBriefing;
   final GenerateOnboardingChecklistUseCase _generateOnboarding;
   final CheckOnboardingItemUseCase _checkOnboardingItem;
+  final ParseVoiceOrderUseCase _parseVoiceOrder;
+  final SendTicketToKitchenUseCase _sendTicketToKitchen;
+  final StartCookingTaskUseCase _startCookingTask;
+  final CompleteCookingTaskUseCase _completeCookingTask;
   final Uuid _uuid;
   final DateTime Function() _now;
 
@@ -61,6 +65,10 @@ class BrCommandRegistry {
     required GenerateMorningBriefingUseCase generateBriefing,
     required GenerateOnboardingChecklistUseCase generateOnboarding,
     required CheckOnboardingItemUseCase checkOnboardingItem,
+    required ParseVoiceOrderUseCase parseVoiceOrder,
+    required SendTicketToKitchenUseCase sendTicketToKitchen,
+    required StartCookingTaskUseCase startCookingTask,
+    required CompleteCookingTaskUseCase completeCookingTask,
     required Uuid uuid,
     required DateTime Function() now,
   })  : _config = config,
@@ -87,6 +95,10 @@ class BrCommandRegistry {
         _generateBriefing = generateBriefing,
         _generateOnboarding = generateOnboarding,
         _checkOnboardingItem = checkOnboardingItem,
+        _parseVoiceOrder = parseVoiceOrder,
+        _sendTicketToKitchen = sendTicketToKitchen,
+        _startCookingTask = startCookingTask,
+        _completeCookingTask = completeCookingTask,
         _uuid = uuid,
         _now = now;
 
@@ -135,6 +147,12 @@ class BrCommandRegistry {
           return _dispatchBriefing(args);
         case 'onboarding':
           return _dispatchOnboarding(args);
+        case 'ticket':
+          return _dispatchTicket(args);
+        case 'recipe':
+          return _dispatchRecipe(args);
+        case 'cooking':
+          return _dispatchCooking(args);
         default:
           return _invalid('unknown command: $group');
       }
@@ -663,6 +681,208 @@ class BrCommandRegistry {
         return r.when(success: (b) => _success(b.toJson()), failure: _failureOf);
       default:
         return _invalid('cost: unknown sub "$sub"');
+    }
+  }
+
+  // ticket (Phase E1 — voice + kitchen tickets)
+  Future<Map<String, dynamic>> _dispatchTicket(List<String> args) async {
+    if (args.isEmpty) return _invalid('ticket <parse|list|get|send|item-status>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'parse':
+        final text = _opt(rest, '--text');
+        final tableStr = _opt(rest, '--table');
+        if (text == null) {
+          return _invalid('ticket parse --text "table 5 deux ricards une entrecôte saignante" [--table N]');
+        }
+        final r = await _parseVoiceOrder(
+          textFallback: text,
+          tableNumber: tableStr != null ? int.tryParse(tableStr) : null,
+          createdBy: _opt(rest, '--actor') ?? 'server',
+        );
+        return r.when(success: (t) => _success(t.toJson()), failure: _failureOf);
+      case 'list':
+        final statusStr = _opt(rest, '--status');
+        final status = statusStr != null
+            ? SgKitchenTicketStatus.values
+                .where((s) => s.name == statusStr)
+                .firstOrNull
+            : null;
+        final r = await _repo.listKitchenTickets(status: status);
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'tickets': l.map((t) => t.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      case 'get':
+        if (rest.isEmpty) return _invalid('ticket get <id>');
+        final r = await _repo.getKitchenTicket(rest.first);
+        return r.when(
+          success: (t) =>
+              t == null ? _failure('not found') : _success(t.toJson()),
+          failure: _failureOf,
+        );
+      case 'send':
+        if (rest.isEmpty) return _invalid('ticket send <id>');
+        final r = await _sendTicketToKitchen(
+          ticketId: rest.first,
+          actor: _opt(rest, '--actor') ?? 'server',
+        );
+        return r.when(success: (t) => _success(t.toJson()), failure: _failureOf);
+      case 'item-status':
+        final itemId = _opt(rest, '--item');
+        final statusStr = _opt(rest, '--status');
+        if (itemId == null || statusStr == null) {
+          return _invalid('ticket item-status --item <id> --status pending|cooking|ready|served|cancelled');
+        }
+        final status = SgKitchenItemStatus.values
+            .where((s) => s.name == statusStr)
+            .firstOrNull;
+        if (status == null) return _invalid('unknown status: $statusStr');
+        // load item via ticket — quick path : list all tickets and find
+        final allRes = await _repo.listKitchenTickets();
+        SgKitchenTicketItem? found;
+        for (final t in (allRes.valueOrNull ?? const <SgKitchenTicket>[])) {
+          for (final it in t.items) {
+            if (it.id == itemId) {
+              found = it;
+              break;
+            }
+          }
+          if (found != null) break;
+        }
+        if (found == null) return _failure('item not found');
+        final now = _now();
+        final updated = found.copyWith(
+          status: status,
+          startedAt: status == SgKitchenItemStatus.cooking ? now : found.startedAt,
+          readyAt: status == SgKitchenItemStatus.ready ? now : found.readyAt,
+          servedAt: status == SgKitchenItemStatus.served ? now : found.servedAt,
+        );
+        final r = await _repo.updateKitchenTicketItem(updated);
+        return r.when(success: (i) => _success(i.toJson()), failure: _failureOf);
+      default:
+        return _invalid('ticket: unknown sub "$sub"');
+    }
+  }
+
+  // recipe (Phase E2)
+  Future<Map<String, dynamic>> _dispatchRecipe(List<String> args) async {
+    if (args.isEmpty) return _invalid('recipe <list|get|create|create-sample>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'list':
+        final r = await _repo.listRecipes();
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'recipes': l.map((r) => r.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      case 'get':
+        if (rest.isEmpty) return _invalid('recipe get <id>');
+        final r = await _repo.getRecipe(rest.first);
+        return r.when(
+          success: (rec) =>
+              rec == null ? _failure('not found') : _success(rec.toJson()),
+          failure: _failureOf,
+        );
+      case 'create-sample':
+        final menuItemId = _opt(rest, '--item');
+        if (menuItemId == null) {
+          return _invalid('recipe create-sample --item <menu_item_id>');
+        }
+        return _createSampleRecipe(menuItemId);
+      default:
+        return _invalid('recipe: unknown sub "$sub"');
+    }
+  }
+
+  Future<Map<String, dynamic>> _createSampleRecipe(String menuItemId) async {
+    final recipeId = 'r-${_uuid.v4()}';
+    final now = _now();
+    final steps = <SgRecipeStep>[
+      SgRecipeStep(
+        id: 'rs-${_uuid.v4()}',
+        recipeId: recipeId,
+        sortOrder: 0,
+        type: SgRecipeStepType.prep,
+        label: 'Préparer ingrédients',
+        expectedDuration: const Duration(minutes: 3),
+      ),
+      SgRecipeStep(
+        id: 'rs-${_uuid.v4()}',
+        recipeId: recipeId,
+        sortOrder: 1,
+        type: SgRecipeStepType.cooking,
+        label: 'Cuisson',
+        expectedDuration: const Duration(minutes: 8),
+        instructions: 'Surveiller le timer — viser saignant par défaut',
+      ),
+      SgRecipeStep(
+        id: 'rs-${_uuid.v4()}',
+        recipeId: recipeId,
+        sortOrder: 2,
+        type: SgRecipeStepType.plating,
+        label: 'Dressage',
+        expectedDuration: const Duration(minutes: 2),
+      ),
+    ];
+    final recipe = SgRecipe(
+      id: recipeId,
+      menuItemId: menuItemId,
+      name: 'Recette standard',
+      steps: steps,
+      createdAt: now,
+      createdBy: 'manager',
+    );
+    final r = await _repo.createRecipe(recipe);
+    return r.when(success: (rec) => _success(rec.toJson()), failure: _failureOf);
+  }
+
+  // cooking (Phase E2)
+  Future<Map<String, dynamic>> _dispatchCooking(List<String> args) async {
+    if (args.isEmpty) return _invalid('cooking <list|start|complete>');
+    final sub = args.first;
+    final rest = args.sublist(1);
+    switch (sub) {
+      case 'list':
+        final statusStr = _opt(rest, '--status');
+        final status = statusStr != null
+            ? SgCookingTaskStatus.values
+                .where((s) => s.name == statusStr)
+                .firstOrNull
+            : null;
+        final r = await _repo.listCookingTasks(status: status);
+        return r.when(
+          success: (l) => _success({
+            'count': l.length,
+            'tasks': l.map((t) => t.toJson()).toList(),
+          }),
+          failure: _failureOf,
+        );
+      case 'start':
+        if (rest.isEmpty) return _invalid('cooking start <task_id> [--by employee]');
+        final r = await _startCookingTask(
+          taskId: rest.first,
+          assignedTo: _opt(rest, '--by'),
+          actor: _opt(rest, '--actor') ?? 'cook',
+        );
+        return r.when(success: (t) => _success(t.toJson()), failure: _failureOf);
+      case 'complete':
+        if (rest.isEmpty) return _invalid('cooking complete <task_id>');
+        final r = await _completeCookingTask(
+          taskId: rest.first,
+          actor: _opt(rest, '--actor') ?? 'cook',
+        );
+        return r.when(success: (t) => _success(t.toJson()), failure: _failureOf);
+      default:
+        return _invalid('cooking: unknown sub "$sub"');
     }
   }
 

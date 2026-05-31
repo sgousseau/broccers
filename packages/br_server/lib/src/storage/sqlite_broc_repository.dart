@@ -207,6 +207,79 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
     ''');
     db.execute('CREATE INDEX IF NOT EXISTS idx_onboarding_emp ON onboarding_checklists(employee_id, created_at DESC);');
 
+    // === Phase E1 — Kitchen tickets ===
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS kitchen_tickets (
+        id TEXT PRIMARY KEY,
+        table_number INTEGER,
+        table_label TEXT,
+        status TEXT NOT NULL,
+        created_by TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        sent_to_kitchen_at TEXT,
+        completed_at TEXT,
+        voice_transcript TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS kitchen_ticket_items (
+        id TEXT PRIMARY KEY,
+        ticket_id TEXT NOT NULL REFERENCES kitchen_tickets(id) ON DELETE CASCADE,
+        menu_item_id TEXT,
+        label TEXT NOT NULL,
+        quantity INTEGER NOT NULL DEFAULT 1,
+        modifiers_json TEXT NOT NULL DEFAULT '[]',
+        status TEXT NOT NULL,
+        notes TEXT,
+        started_at TEXT,
+        ready_at TEXT,
+        served_at TEXT
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_tickets_status ON kitchen_tickets(status, created_at DESC);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_ticket_items_ticket ON kitchen_ticket_items(ticket_id);');
+
+    // === Phase E2 — Recipes + cooking tasks ===
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS recipes (
+        id TEXT PRIMARY KEY,
+        menu_item_id TEXT NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL,
+        updated_at TEXT,
+        created_by TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS recipe_steps (
+        id TEXT PRIMARY KEY,
+        recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        sort_order INTEGER NOT NULL,
+        type TEXT NOT NULL,
+        label TEXT NOT NULL,
+        expected_duration_ms INTEGER NOT NULL,
+        instructions TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS cooking_tasks (
+        id TEXT PRIMARY KEY,
+        ticket_item_id TEXT NOT NULL REFERENCES kitchen_ticket_items(id) ON DELETE CASCADE,
+        recipe_step_id TEXT,
+        label TEXT NOT NULL,
+        status TEXT NOT NULL,
+        started_at TEXT,
+        completed_at TEXT,
+        expected_duration_ms INTEGER NOT NULL,
+        assigned_to TEXT,
+        sort_order INTEGER NOT NULL DEFAULT 0
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_recipes_menu ON recipes(menu_item_id);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_recipe_steps_recipe ON recipe_steps(recipe_id, sort_order);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_cooking_tasks_item ON cooking_tasks(ticket_item_id, sort_order);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_cooking_tasks_status ON cooking_tasks(status, started_at);');
+
     // === Phase A migrations from v0.1 → v0.2 (idempotent) ===
     final empCols = db
         .select('PRAGMA table_info(employees)')
@@ -1126,6 +1199,375 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
             .toList(),
         createdAt: DateTime.parse(r['created_at'] as String),
         engine: r['engine'] as String,
+      );
+
+  // ============== Kitchen tickets (Phase E1) ==============
+  @override
+  Future<Result<SgKitchenTicket, SgFailure>> createKitchenTicket(SgKitchenTicket t) async => _wrap(() {
+        _db.execute('BEGIN TRANSACTION');
+        try {
+          _db.execute(
+            'INSERT INTO kitchen_tickets(id, table_number, table_label, status, created_by, created_at, sent_to_kitchen_at, completed_at, voice_transcript) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [
+              t.id,
+              t.tableNumber,
+              t.tableLabel,
+              t.status.name,
+              t.createdBy,
+              t.createdAt.toIso8601String(),
+              t.sentToKitchenAt?.toIso8601String(),
+              t.completedAt?.toIso8601String(),
+              t.voiceTranscript,
+            ],
+          );
+          for (final it in t.items) {
+            _db.execute(
+              'INSERT INTO kitchen_ticket_items(id, ticket_id, menu_item_id, label, quantity, modifiers_json, status, notes, started_at, ready_at, served_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [
+                it.id,
+                it.ticketId,
+                it.menuItemId,
+                it.label,
+                it.quantity,
+                jsonEncode(it.modifiers),
+                it.status.name,
+                it.notes,
+                it.startedAt?.toIso8601String(),
+                it.readyAt?.toIso8601String(),
+                it.servedAt?.toIso8601String(),
+              ],
+            );
+          }
+          _db.execute('COMMIT');
+          return t;
+        } catch (e) {
+          _db.execute('ROLLBACK');
+          rethrow;
+        }
+      });
+
+  @override
+  Future<Result<SgKitchenTicket, SgFailure>> updateKitchenTicket(SgKitchenTicket t) async => _wrap(() {
+        _db.execute(
+          'UPDATE kitchen_tickets SET table_number = ?, table_label = ?, status = ?, sent_to_kitchen_at = ?, completed_at = ?, voice_transcript = ? WHERE id = ?',
+          [
+            t.tableNumber,
+            t.tableLabel,
+            t.status.name,
+            t.sentToKitchenAt?.toIso8601String(),
+            t.completedAt?.toIso8601String(),
+            t.voiceTranscript,
+            t.id,
+          ],
+        );
+        return t;
+      });
+
+  @override
+  Future<Result<SgKitchenTicket?, SgFailure>> getKitchenTicket(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM kitchen_tickets WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return _hydrateTicket(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgKitchenTicket>, SgFailure>> listKitchenTickets({
+    SgKitchenTicketStatus? status,
+    DateTime? from,
+    DateTime? to,
+    int? limit,
+  }) async =>
+      _wrap(() {
+        var sql = 'SELECT * FROM kitchen_tickets WHERE 1=1';
+        final params = <Object>[];
+        if (status != null) {
+          sql += ' AND status = ?';
+          params.add(status.name);
+        }
+        if (from != null) {
+          sql += ' AND created_at >= ?';
+          params.add(from.toIso8601String());
+        }
+        if (to != null) {
+          sql += ' AND created_at <= ?';
+          params.add(to.toIso8601String());
+        }
+        sql += ' ORDER BY created_at DESC LIMIT ?';
+        params.add(limit ?? 200);
+        return _db.select(sql, params).map(_hydrateTicket).toList();
+      });
+
+  @override
+  Future<Result<SgKitchenTicketItem, SgFailure>> updateKitchenTicketItem(SgKitchenTicketItem item) async => _wrap(() {
+        _db.execute(
+          'UPDATE kitchen_ticket_items SET menu_item_id = ?, label = ?, quantity = ?, modifiers_json = ?, status = ?, notes = ?, started_at = ?, ready_at = ?, served_at = ? WHERE id = ?',
+          [
+            item.menuItemId,
+            item.label,
+            item.quantity,
+            jsonEncode(item.modifiers),
+            item.status.name,
+            item.notes,
+            item.startedAt?.toIso8601String(),
+            item.readyAt?.toIso8601String(),
+            item.servedAt?.toIso8601String(),
+            item.id,
+          ],
+        );
+        return item;
+      });
+
+  SgKitchenTicket _hydrateTicket(Row r) {
+    final items = _db.select(
+      'SELECT * FROM kitchen_ticket_items WHERE ticket_id = ? ORDER BY rowid',
+      [r['id']],
+    ).map((i) => SgKitchenTicketItem(
+          id: i['id'] as String,
+          ticketId: i['ticket_id'] as String,
+          menuItemId: i['menu_item_id'] as String?,
+          label: i['label'] as String,
+          quantity: i['quantity'] as int,
+          modifiers: ((jsonDecode(i['modifiers_json'] as String) as List<dynamic>))
+              .cast<String>(),
+          status: SgKitchenItemStatus.values
+              .firstWhere((s) => s.name == i['status']),
+          notes: i['notes'] as String?,
+          startedAt: i['started_at'] != null
+              ? DateTime.parse(i['started_at'] as String)
+              : null,
+          readyAt: i['ready_at'] != null
+              ? DateTime.parse(i['ready_at'] as String)
+              : null,
+          servedAt: i['served_at'] != null
+              ? DateTime.parse(i['served_at'] as String)
+              : null,
+        )).toList();
+    return SgKitchenTicket(
+      id: r['id'] as String,
+      tableNumber: r['table_number'] as int?,
+      tableLabel: r['table_label'] as String?,
+      status: SgKitchenTicketStatus.values.firstWhere((s) => s.name == r['status']),
+      items: items,
+      createdBy: r['created_by'] as String,
+      createdAt: DateTime.parse(r['created_at'] as String),
+      sentToKitchenAt: r['sent_to_kitchen_at'] != null
+          ? DateTime.parse(r['sent_to_kitchen_at'] as String)
+          : null,
+      completedAt: r['completed_at'] != null
+          ? DateTime.parse(r['completed_at'] as String)
+          : null,
+      voiceTranscript: r['voice_transcript'] as String?,
+    );
+  }
+
+  // ============== Recipes (Phase E2) ==============
+  @override
+  Future<Result<SgRecipe, SgFailure>> createRecipe(SgRecipe r) async => _wrap(() {
+        _db.execute('BEGIN TRANSACTION');
+        try {
+          _db.execute(
+            'INSERT INTO recipes(id, menu_item_id, name, created_at, updated_at, created_by) VALUES (?, ?, ?, ?, ?, ?)',
+            [
+              r.id,
+              r.menuItemId,
+              r.name,
+              r.createdAt.toIso8601String(),
+              r.updatedAt?.toIso8601String(),
+              r.createdBy,
+            ],
+          );
+          for (final s in r.steps) {
+            _db.execute(
+              'INSERT INTO recipe_steps(id, recipe_id, sort_order, type, label, expected_duration_ms, instructions) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [
+                s.id,
+                s.recipeId,
+                s.sortOrder,
+                s.type.name,
+                s.label,
+                s.expectedDuration.inMilliseconds,
+                s.instructions,
+              ],
+            );
+          }
+          _db.execute('COMMIT');
+          return r;
+        } catch (e) {
+          _db.execute('ROLLBACK');
+          rethrow;
+        }
+      });
+
+  @override
+  Future<Result<SgRecipe, SgFailure>> updateRecipe(SgRecipe r) async => _wrap(() {
+        _db.execute('BEGIN TRANSACTION');
+        try {
+          _db.execute(
+            'UPDATE recipes SET name = ?, updated_at = ? WHERE id = ?',
+            [r.name, r.updatedAt?.toIso8601String(), r.id],
+          );
+          _db.execute('DELETE FROM recipe_steps WHERE recipe_id = ?', [r.id]);
+          for (final s in r.steps) {
+            _db.execute(
+              'INSERT INTO recipe_steps(id, recipe_id, sort_order, type, label, expected_duration_ms, instructions) VALUES (?, ?, ?, ?, ?, ?, ?)',
+              [
+                s.id,
+                s.recipeId,
+                s.sortOrder,
+                s.type.name,
+                s.label,
+                s.expectedDuration.inMilliseconds,
+                s.instructions,
+              ],
+            );
+          }
+          _db.execute('COMMIT');
+          return r;
+        } catch (e) {
+          _db.execute('ROLLBACK');
+          rethrow;
+        }
+      });
+
+  @override
+  Future<Result<SgRecipe?, SgFailure>> getRecipe(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM recipes WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return _hydrateRecipe(rs.first);
+      });
+
+  @override
+  Future<Result<SgRecipe?, SgFailure>> getRecipeForMenuItem(String menuItemId) async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM recipes WHERE menu_item_id = ? ORDER BY created_at DESC LIMIT 1',
+          [menuItemId],
+        );
+        if (rs.isEmpty) return null;
+        return _hydrateRecipe(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgRecipe>, SgFailure>> listRecipes() async => _wrap(() {
+        return _db.select('SELECT * FROM recipes ORDER BY created_at DESC')
+            .map(_hydrateRecipe).toList();
+      });
+
+  SgRecipe _hydrateRecipe(Row r) {
+    final steps = _db.select(
+      'SELECT * FROM recipe_steps WHERE recipe_id = ? ORDER BY sort_order',
+      [r['id']],
+    ).map((s) => SgRecipeStep(
+          id: s['id'] as String,
+          recipeId: s['recipe_id'] as String,
+          sortOrder: s['sort_order'] as int,
+          type: SgRecipeStepType.values.firstWhere((t) => t.name == s['type']),
+          label: s['label'] as String,
+          expectedDuration: Duration(milliseconds: s['expected_duration_ms'] as int),
+          instructions: s['instructions'] as String?,
+        )).toList();
+    return SgRecipe(
+      id: r['id'] as String,
+      menuItemId: r['menu_item_id'] as String,
+      name: r['name'] as String,
+      steps: steps,
+      createdAt: DateTime.parse(r['created_at'] as String),
+      updatedAt: r['updated_at'] != null
+          ? DateTime.parse(r['updated_at'] as String)
+          : null,
+      createdBy: r['created_by'] as String?,
+    );
+  }
+
+  // ============== Cooking tasks (Phase E2) ==============
+  @override
+  Future<Result<SgCookingTask, SgFailure>> createCookingTask(SgCookingTask t) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO cooking_tasks(id, ticket_item_id, recipe_step_id, label, status, started_at, completed_at, expected_duration_ms, assigned_to, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            t.id,
+            t.ticketItemId,
+            t.recipeStepId,
+            t.label,
+            t.status.name,
+            t.startedAt?.toIso8601String(),
+            t.completedAt?.toIso8601String(),
+            t.expectedDuration.inMilliseconds,
+            t.assignedTo,
+            t.sortOrder,
+          ],
+        );
+        return t;
+      });
+
+  @override
+  Future<Result<SgCookingTask, SgFailure>> updateCookingTask(SgCookingTask t) async => _wrap(() {
+        _db.execute(
+          'UPDATE cooking_tasks SET status = ?, started_at = ?, completed_at = ?, assigned_to = ?, label = ? WHERE id = ?',
+          [
+            t.status.name,
+            t.startedAt?.toIso8601String(),
+            t.completedAt?.toIso8601String(),
+            t.assignedTo,
+            t.label,
+            t.id,
+          ],
+        );
+        return t;
+      });
+
+  @override
+  Future<Result<SgCookingTask?, SgFailure>> getCookingTask(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM cooking_tasks WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        return _rowToCookingTask(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgCookingTask>, SgFailure>> listCookingTasks({
+    String? ticketItemId,
+    SgCookingTaskStatus? status,
+    DateTime? from,
+    DateTime? to,
+  }) async =>
+      _wrap(() {
+        var sql = 'SELECT * FROM cooking_tasks WHERE 1=1';
+        final params = <Object>[];
+        if (ticketItemId != null) {
+          sql += ' AND ticket_item_id = ?';
+          params.add(ticketItemId);
+        }
+        if (status != null) {
+          sql += ' AND status = ?';
+          params.add(status.name);
+        }
+        if (from != null) {
+          sql += ' AND COALESCE(started_at, "9999") >= ?';
+          params.add(from.toIso8601String());
+        }
+        if (to != null) {
+          sql += ' AND COALESCE(started_at, "0000") <= ?';
+          params.add(to.toIso8601String());
+        }
+        sql += ' ORDER BY sort_order, started_at';
+        return _db.select(sql, params).map(_rowToCookingTask).toList();
+      });
+
+  SgCookingTask _rowToCookingTask(Row r) => SgCookingTask(
+        id: r['id'] as String,
+        ticketItemId: r['ticket_item_id'] as String,
+        recipeStepId: r['recipe_step_id'] as String?,
+        label: r['label'] as String,
+        status: SgCookingTaskStatus.values
+            .firstWhere((s) => s.name == r['status']),
+        startedAt: r['started_at'] != null
+            ? DateTime.parse(r['started_at'] as String)
+            : null,
+        completedAt: r['completed_at'] != null
+            ? DateTime.parse(r['completed_at'] as String)
+            : null,
+        expectedDuration: Duration(milliseconds: r['expected_duration_ms'] as int),
+        assignedTo: r['assigned_to'] as String?,
+        sortOrder: r['sort_order'] as int? ?? 0,
       );
 
   void close() => _db.dispose();
