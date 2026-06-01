@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broccers — Spécifications fonctionnelles exhaustives</title>
+<style>
+  :root {
+    --broc-red: #c72226;
+    --broc-yellow: #f5c842;
+    --broc-cream: #f5ebd6;
+    --broc-black: #14100f;
+    --soft: #2a221e;
+    --grey: #b5a89a;
+    --muted: #7a6f63;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --blue: #60a5fa;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+  body {
+    background: var(--broc-black);
+    color: var(--broc-cream);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.65;
+  }
+  a { color: var(--broc-yellow); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    background: var(--soft);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.88em;
+    color: var(--broc-yellow);
+  }
+  .layout {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+  /* === SIDEBAR === */
+  nav.toc {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: linear-gradient(180deg, #1a1310 0%, var(--broc-black) 100%);
+    border-right: 1px solid var(--soft);
+    padding: 24px 18px;
+  }
+  nav.toc .brand {
+    background: var(--broc-red);
+    color: var(--broc-cream);
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    font-size: 12px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+  nav.toc h1 {
+    font-size: 1.4rem;
+    margin: 0 0 6px;
+    color: var(--broc-yellow);
+  }
+  nav.toc .sub {
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-bottom: 24px;
+    font-style: italic;
+  }
+  nav.toc ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: section;
+    margin: 0;
+  }
+  nav.toc ol > li {
+    counter-increment: section;
+    margin: 4px 0;
+  }
+  nav.toc ol > li > a {
+    display: block;
+    padding: 6px 8px;
+    border-radius: 4px;
+    font-size: 0.86rem;
+    color: var(--broc-cream);
+    border-left: 2px solid transparent;
+  }
+  nav.toc ol > li > a:hover {
+    background: rgba(245, 200, 66, 0.08);
+    border-left-color: var(--broc-yellow);
+    text-decoration: none;
+  }
+  nav.toc ol > li > a::before {
+    content: counter(section) ".";
+    color: var(--broc-red);
+    font-weight: 700;
+    margin-right: 6px;
+  }
+  nav.toc ol ol {
+    counter-reset: sub;
+    margin: 4px 0 8px 16px;
+    border-left: 1px solid var(--soft);
+    padding-left: 8px;
+  }
+  nav.toc ol ol > li {
+    counter-increment: sub;
+  }
+  nav.toc ol ol > li > a {
+    font-size: 0.78rem;
+    color: var(--grey);
+    padding: 3px 8px;
+  }
+  nav.toc ol ol > li > a::before {
+    content: counter(section) "." counter(sub) " ";
+    color: var(--muted);
+    font-weight: 600;
+  }
+  nav.toc .meta {
+    margin-top: 24px;
+    padding-top: 16px;
+    border-top: 1px solid var(--soft);
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  nav.toc .meta strong { color: var(--broc-yellow); }
+  /* === CONTENT === */
+  main {
+    padding: 50px 60px 100px;
+    max-width: 1100px;
+  }
+  h2 {
+    font-size: 2.2rem;
+    color: var(--broc-yellow);
+    border-bottom: 3px solid var(--broc-red);
+    padding-bottom: 10px;
+    margin-top: 60px;
+    margin-bottom: 24px;
+  }
+  h2:first-child { margin-top: 0; }
+  h2 .anchor {
+    color: var(--broc-red);
+    font-family: 'SF Mono', monospace;
+    font-size: 1.4rem;
+    margin-right: 12px;
+  }
+  h3 {
+    color: var(--broc-cream);
+    font-size: 1.5rem;
+    margin: 30px 0 12px;
+    padding-left: 12px;
+    border-left: 4px solid var(--broc-red);
+  }
+  h4 {
+    color: var(--broc-yellow);
+    font-size: 1.15rem;
+    margin: 22px 0 8px;
+  }
+  p {
+    color: var(--broc-cream);
+    margin: 10px 0 14px;
+  }
+  .lead {
+    color: var(--grey);
+    font-size: 1.1rem;
+    font-style: italic;
+    margin-bottom: 24px;
+    border-left: 3px solid var(--broc-yellow);
+    padding-left: 14px;
+  }
+  ul, ol.body { padding-left: 22px; }
+  ul li, ol.body li {
+    margin: 6px 0;
+    color: var(--broc-cream);
+  }
+  ul li strong, ol.body li strong { color: var(--broc-yellow); }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 0.92rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--soft);
+    vertical-align: top;
+  }
+  th {
+    background: rgba(199, 34, 38, 0.18);
+    color: var(--broc-yellow);
+    font-weight: 700;
+    text-transform: uppercase;
+    font-size: 0.78rem;
+    letter-spacing: 1px;
+  }
+  td:first-child { font-weight: 600; color: var(--broc-cream); }
+  .callout {
+    border-left: 4px solid;
+    padding: 14px 18px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout.info { background: rgba(96, 165, 250, 0.08); border-color: var(--blue); }
+  .callout.warn { background: rgba(251, 146, 60, 0.08); border-color: var(--orange); }
+  .callout.success { background: rgba(74, 222, 128, 0.08); border-color: var(--green); }
+  .callout.phase { background: rgba(245, 200, 66, 0.08); border-color: var(--broc-yellow); }
+  .callout strong { color: var(--broc-yellow); }
+  .module {
+    background: rgba(245, 235, 214, 0.04);
+    border: 1px solid rgba(245, 235, 214, 0.08);
+    border-radius: 10px;
+    padding: 24px 26px;
+    margin: 20px 0;
+  }
+  .module .module-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .module .icon {
+    font-size: 2rem;
+  }
+  .module h3 {
+    margin: 0;
+    border: none;
+    padding: 0;
+    font-size: 1.4rem;
+  }
+  .module .desc {
+    color: var(--grey);
+    font-style: italic;
+    margin: 4px 0 14px;
+  }
+  .module .feats {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .module .feats li {
+    padding: 6px 0;
+    border-bottom: 1px dashed rgba(245, 235, 214, 0.08);
+  }
+  .module .feats li:last-child { border-bottom: none; }
+  .module .feats strong {
+    color: var(--broc-yellow);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .module .feats span {
+    color: var(--grey);
+    font-size: 0.92rem;
+  }
+  .feature-num {
+    display: inline-block;
+    width: 28px;
+    color: var(--broc-red);
+    font-family: 'SF Mono', monospace;
+    font-weight: 700;
+    font-size: 0.85rem;
+  }
+  .catalog {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 16px 0;
+  }
+  .catalog h4 {
+    margin: 0 0 10px;
+    color: var(--broc-red);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(199, 34, 38, 0.3);
+    padding-bottom: 6px;
+  }
+  .catalog ol {
+    list-style: none;
+    padding: 0;
+    counter-reset: feat;
+  }
+  .catalog ol li {
+    counter-increment: feat;
+    padding: 5px 0 5px 36px;
+    position: relative;
+    font-size: 0.92rem;
+    color: var(--broc-cream);
+  }
+  .catalog ol li::before {
+    content: counter(feat, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 5px;
+    color: var(--broc-red);
+    font-family: 'SF Mono', monospace;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+  .catalog ol li strong { color: var(--broc-yellow); }
+  .workflow {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 14px 0;
+  }
+  .workflow .title {
+    color: var(--broc-yellow);
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .workflow .actors {
+    color: var(--grey);
+    font-size: 0.8rem;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .workflow ol {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+  }
+  .workflow ol li {
+    counter-increment: step;
+    padding: 8px 0 8px 36px;
+    position: relative;
+  }
+  .workflow ol li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 8px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .roles-matrix {
+    overflow-x: auto;
+    margin: 16px 0;
+  }
+  .roles-matrix table {
+    min-width: 700px;
+  }
+  .roles-matrix .yes { color: var(--green); font-weight: 700; }
+  .roles-matrix .no { color: var(--muted); }
+  .roles-matrix .conditional { color: var(--orange); font-weight: 600; font-size: 0.85rem; }
+  .phase-card {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 14px 0;
+    border-left: 4px solid var(--broc-yellow);
+  }
+  .phase-card .label {
+    display: inline-block;
+    background: var(--broc-red);
+    color: var(--broc-cream);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    margin-right: 8px;
+    letter-spacing: 1px;
+  }
+  .phase-card.done { border-left-color: var(--green); }
+  .phase-card.done .label { background: var(--green); color: var(--broc-black); }
+  .phase-card.next { border-left-color: var(--orange); }
+  .phase-card.next .label { background: var(--orange); color: var(--broc-black); }
+  .phase-card.future { border-left-color: var(--blue); }
+  .phase-card.future .label { background: var(--blue); color: var(--broc-black); }
+  .glossary dt {
+    color: var(--broc-yellow);
+    font-weight: 700;
+    margin-top: 12px;
+  }
+  .glossary dd {
+    margin: 4px 0 12px 16px;
+    color: var(--grey);
+  }
+  .toc-toggle {
+    display: none;
+  }
+  @media (max-width: 900px) {
+    .layout { grid-template-columns: 1fr; }
+    nav.toc { position: static; height: auto; max-height: none; }
+    main { padding: 30px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ============ SIDEBAR ============ -->
+<nav class="toc">
+  <div class="brand">CAFÉ</div>
+  <h1>Broccers</h1>
+  <div class="sub">Spécifications fonctionnelles · v0.7.0</div>
+  <ol>
+    <li><a href="#s1">Vision &amp; philosophie</a></li>
+    <li><a href="#s2">Identité opérationnelle</a></li>
+    <li><a href="#s3">Topologie des rôles</a></li>
+    <li><a href="#s4">Architecture en 4 couches</a></li>
+    <li><a href="#s5">Cycle d'une journée type</a></li>
+    <li><a href="#s6">Modules fonctionnels</a>
+      <ol>
+        <li><a href="#s6-1">Personnel &amp; RH</a></li>
+        <li><a href="#s6-2">Cartes &amp; menus</a></li>
+        <li><a href="#s6-3">Cuisine connectée</a></li>
+        <li><a href="#s6-4">Achats &amp; fournisseurs</a></li>
+        <li><a href="#s6-5">Marges &amp; coûts</a></li>
+        <li><a href="#s6-6">Gaspillage &amp; pertes</a></li>
+        <li><a href="#s6-7">Tables &amp; clients</a></li>
+        <li><a href="#s6-8">Paramètres &amp; admin</a></li>
+        <li><a href="#s6-9">Journal &amp; audit</a></li>
+        <li><a href="#s6-10">Assistant IA</a></li>
+        <li><a href="#s6-11">Caméras IA (ESP32-S3)</a></li>
+      </ol>
+    </li>
+    <li><a href="#s7">Catalogue exhaustif</a></li>
+    <li><a href="#s8">Workflows transversaux</a></li>
+    <li><a href="#s9">Sécurité &amp; conformité</a></li>
+    <li><a href="#s10">Portabilité &amp; déploiement</a></li>
+    <li><a href="#s11">Roadmap par phases</a></li>
+    <li><a href="#s12">Architecture technique</a></li>
+    <li><a href="#s13">Glossaire</a></li>
+  </ol>
+  <div class="meta">
+    <strong>Édition :</strong> 2026-06-01<br>
+    <strong>Auteur :</strong> Stowy Agency<br>
+    <strong>Cible :</strong> Le Broc Café — Villeurbanne<br>
+    <strong>Document :</strong> spec fonctionnelle exhaustive<br>
+    <strong>Voir aussi :</strong> <a href="/docs/presentation">présentation pour les nuls</a>
+  </div>
+</nav>
+
+<!-- ============ CONTENT ============ -->
+<main>
+
+<!-- ====================================================================== -->
+<!-- §1 VISION & PHILOSOPHIE                                                 -->
+<!-- ====================================================================== -->
+<h2 id="s1"><span class="anchor">§1</span>Vision &amp; philosophie produit</h2>
+<p class="lead">Broccers est conçu pour qu'un restaurateur arrête de subir son outillage et puisse le piloter, sans dépendance à un éditeur tiers, sans perte de contrôle sur ses données, et sans surcoût mensuel proportionnel à son chiffre d'affaires.</p>
+
+<h3>Le constat de départ</h3>
+<p>Dans une brasserie, trois problèmes structurels coûtent de l'argent silencieusement, tous les jours :</p>
+<ol class="body">
+  <li><strong>Surcharge cognitive du manager.</strong> Le manager est sollicité simultanément par la cuisine (ruptures), la salle (commandes), les achats (livraisons), les employés (pointage, repos), et les clients (réclamations). Quand il s'absente, la chaîne d'information se rompt et chaque incident devient une perte.</li>
+  <li><strong>Opacité financière.</strong> Personne ne sait en temps réel quelle est la marge d'un plat, combien on a jeté cette semaine, ni si le coût d'un ingrédient a changé depuis la dernière livraison. La décision se fait au feeling, validée mensuellement par le comptable — trop tard pour rectifier.</li>
+  <li><strong>Perte de temps sur la non-valeur.</strong> Ré-imprimer une carte, transcrire des commandes sur papier, expliquer trois fois aux nouveaux serveurs ce qui est à la carte, chercher pourquoi un employé conteste son horaire : toutes ces tâches répétitives empêchent l'équipe de se concentrer sur la qualité de service.</li>
+</ol>
+
+<h3>Les principes fondateurs</h3>
+<p>Sept principes guident chaque choix de conception. Ils ne sont pas négociables.</p>
+<ul>
+  <li><strong>Source unique de vérité.</strong> La carte affichée au client, la carte vue par le serveur sur sa tablette, et la carte imprimée en cuisine sont toujours identiques. Une seule donnée, un seul endroit où elle vit.</li>
+  <li><strong>Tracer pour comprendre, jamais pour réprimander.</strong> Chaque action est consignée avec l'auteur, la cible et la raison — non pour fliquer, mais pour analyser ce qui peut être amélioré. Toute alerte va au manager, jamais directement à l'employé. Toute formulation reste hypothétique.</li>
+  <li><strong>L'IA assiste, l'humain décide.</strong> Aucune action critique (publication d'une carte, validation d'une commande, changement de prix) n'est exécutée sans confirmation humaine explicite. L'IA propose une extraction, un parsing, un briefing — la personne décide.</li>
+  <li><strong>Local par défaut, cloud jamais.</strong> Toutes les données sont stockées sur la machine du restaurant. Aucune dépendance à un service externe payant. L'accès distant se fait via Tailscale (réseau privé chiffré) ou Docker en local, jamais via Internet public.</li>
+  <li><strong>Conformité légale dès la conception.</strong> Allergènes INCO (règlement UE 1169/2011), pauses légales du code du travail français (Art. L. 3121-16), traçabilité des modifications, immutabilité du journal d'audit : tout cela est intégré au cœur du domaine, pas ajouté en surcouche.</li>
+  <li><strong>Pas de superflu.</strong> Chaque fonctionnalité doit résoudre un problème opérationnel concret. Aucun gadget, aucune animation décorative, aucun écran de chargement gratuit. Si un manager ne s'en sert pas trois fois par semaine, c'est qu'on n'aurait pas dû la livrer.</li>
+  <li><strong>Évolutif sans réécriture.</strong> Seuils de marge, profils économiques, rôles employés, types de cartes, langues, charges sociales : tout ce qui dépend de la conjoncture est paramétrable depuis l'interface, sans intervention de développeur.</li>
+</ul>
+
+<div class="callout phase">
+  <strong>Observabilité bienveillante.</strong> Ce terme désigne notre approche du journal d'audit. Quand le système détecte une anomalie (un employé qui n'a pas pris sa pause après 6 h continues, par exemple), la notification est formulée comme une question : « Anaïs n'a pas encore pris sa pause après 6 h 12 min de service — il y a peut-être une raison opérationnelle, voulez-vous lui en parler ? » plutôt que comme une sanction. La donnée sert à comprendre ; l'humain décide quoi faire.
+</div>
+
+<!-- ====================================================================== -->
+<!-- §2 IDENTITÉ                                                              -->
+<!-- ====================================================================== -->
+<h2 id="s2"><span class="anchor">§2</span>Identité opérationnelle</h2>
+<p class="lead">Broccers est l'outil interne du Broc Café (Villeurbanne, Puces du Canal). Il sera ensuite proposé à d'autres établissements via le mécanisme de feature flags décrit en §10.</p>
+
+<table>
+  <tbody>
+    <tr><td>Nom du logiciel</td><td>Broccers</td></tr>
+    <tr><td>Établissement initial</td><td>Le Broc Café · 1 Rue du Canal, Villeurbanne (Puces du Canal)</td></tr>
+    <tr><td>Type d'activité</td><td>Brasserie · service midi + soir · 6 tables intérieures, 8 tables terrasse</td></tr>
+    <tr><td>Équipe cible</td><td>1 manager, 1 cuisinier, 2 serveurs, 1 plongeur, 1 runner</td></tr>
+    <tr><td>Édition logicielle</td><td>Stowy Agency (CTO Seb Gousseau)</td></tr>
+    <tr><td>Statut</td><td>v0.7.0 — opérationnel pour ouverture en juin 2026</td></tr>
+    <tr><td>Mode d'accès</td><td>Application web responsive — téléphone, tablette, ordinateur</td></tr>
+    <tr><td>Hébergement</td><td>Mac Studio sur place + Tailscale (privé chiffré) — pas de cloud public</td></tr>
+  </tbody>
+</table>
+
+<!-- ====================================================================== -->
+<!-- §3 RÔLES                                                                 -->
+<!-- ====================================================================== -->
+<h2 id="s3"><span class="anchor">§3</span>Topologie des rôles &amp; droits</h2>
+<p class="lead">Broccers distingue huit rôles fonctionnels. Un employé peut en cumuler plusieurs (multi-rôles dynamique) et changer de rôle en cours de service, à condition que le manager l'autorise.</p>
+
+<h3>Les huit rôles</h3>
+<table>
+  <thead><tr><th>Rôle</th><th>Description</th><th>Qui (exemple)</th></tr></thead>
+  <tbody>
+    <tr><td><code>super_admin</code></td><td>Accès total. Modifie les paramètres système (seuils, charges, feature flags), gère la BD, déploie. Un seul par installation.</td><td>Seb (Stowy Agency)</td></tr>
+    <tr><td><code>manager</code></td><td>Gère équipe, cartes, marges, achats, pertes. Voit tout sauf les paramètres système restreints.</td><td>Patrick · Rico</td></tr>
+    <tr><td><code>server</code></td><td>Prend les commandes (vocal ou clavier), envoie en cuisine, marque les items servis.</td><td>Kevin</td></tr>
+    <tr><td><code>bartender</code></td><td>Service bar, peut signaler rupture boissons.</td><td>(rôle additionnel)</td></tr>
+    <tr><td><code>cook</code></td><td>Voit les tickets cuisine, démarre/termine les cuissons, signale les ruptures d'ingrédients.</td><td>Mathieu</td></tr>
+    <tr><td><code>runner</code></td><td>Service salle uniquement (apporte les plats, débarrasse).</td><td>Eros</td></tr>
+    <tr><td><code>dishwasher</code></td><td>Plonge, peut signaler une casse de vaisselle (waste).</td><td>(rôle additionnel)</td></tr>
+    <tr><td><code>kiosk</code></td><td>Mode tablette partagée (clock-in/out via PIN court).</td><td>(profil tablette, pas un humain)</td></tr>
+  </tbody>
+</table>
+
+<h3>Matrice des capabilities</h3>
+<div class="roles-matrix">
+<table>
+  <thead><tr><th>Action</th><th>super_admin</th><th>manager</th><th>server</th><th>cook</th><th>runner</th><th>kiosk</th></tr></thead>
+  <tbody>
+    <tr><td>Voir équipe</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="conditional">soi-même</td></tr>
+    <tr><td>Clock-in / clock-out</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+    <tr><td>Changer son rôle en cours de shift</td><td class="yes">✓</td><td class="yes">✓</td><td class="conditional">via manager</td><td class="conditional">via manager</td><td class="conditional">via manager</td><td class="no">—</td></tr>
+    <tr><td>Modifier la carte</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Publier une carte</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Mode 86 (signaler rupture)</td><td class="yes">✓</td><td class="yes">✓</td><td class="conditional">si autorisé</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Déclarer un gaspillage</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Voir les marges &amp; coûts</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Modifier les paramètres globaux</td><td class="yes">✓</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Modifier les feature flags</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Changer la base de données</td><td class="yes">✓</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td><td class="no">—</td></tr>
+    <tr><td>Consulter la carte publique (QR)</td><td colspan="6" style="text-align:center; color: var(--broc-yellow); font-weight:600;">Tous · sans authentification, gated par secret QR par table</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout info">
+  <strong>Multi-rôles dynamique.</strong> Un employé peut avoir plusieurs rôles dans son profil (par exemple Kevin : <code>server + bartender</code>). Un planning hebdomadaire associe un rôle par défaut à chaque jour de la semaine. Au clock-in, le rôle est résolu dans cet ordre : override manuel → planning du jour → rôle par défaut du profil. En cours de service, le manager peut déclencher un changement de rôle (segment fermé, nouveau segment ouvert) avec traçabilité complète dans le journal.
+</div>
+
+<!-- ====================================================================== -->
+<!-- §4 ARCHITECTURE 4 COUCHES                                               -->
+<!-- ====================================================================== -->
+<h2 id="s4"><span class="anchor">§4</span>Architecture en 4 couches</h2>
+<p class="lead">Broccers suit une architecture stricte en quatre couches concentriques. Cette discipline garantit que les concepts métier restent stables même si les technologies changent (passage à une autre base de données, à un autre moteur IA, à une autre librairie PDF, etc.).</p>
+
+<h3>Les couches, du centre vers l'extérieur</h3>
+<table>
+  <thead><tr><th>Couche</th><th>Contient</th><th>Exemples Broccers</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>1. Domaine</td>
+      <td>Concepts métier purs, indépendants de toute technologie. C'est ici qu'est défini ce qu'est un employé, ce qu'est une carte, ce qu'est un ticket cuisine.</td>
+      <td>SgEmployee, SgMenuCard, SgKitchenTicket, SgFoodWaste, SgIngredient, SgTable, SgSetting, règles de transitions d'état.</td>
+    </tr>
+    <tr>
+      <td>2. Adaptateurs</td>
+      <td>Implémentations concrètes des dépendances externes : base de données, IA, génération PDF, etc. Si on change de BD, on ne change que cette couche.</td>
+      <td>SqliteBrocRepository (SQLite), ClaudeCliQuestion (subprocess), PdfDartMenuRenderer (package:pdf), ClaudeVoiceParser (Whisper + Claude).</td>
+    </tr>
+    <tr>
+      <td>3. Provider</td>
+      <td>Gateways d'accès au système : routes HTTP, commandes CLI, contrôles automatisés.</td>
+      <td>BrApiRouter (50+ routes REST), BrCommandRegistry (TestControlServer pour QA).</td>
+    </tr>
+    <tr>
+      <td>4. Interface utilisateur</td>
+      <td>Pages, écrans, widgets vus par les humains. Sait afficher, sait recueillir une action, ne sait rien faire d'autre.</td>
+      <td>PersonnelScreen, MenuEditorScreen, WasteScreen, TablesScreen, SettingsScreen.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h3>Pourquoi cette discipline</h3>
+<p>Trois bénéfices concrets pour le restaurant et pour l'éditeur logiciel :</p>
+<ul>
+  <li><strong>Reproductibilité.</strong> Le même domaine peut tourner sur un Mac Studio à Villeurbanne, dans un container Docker chez un client à Lyon, ou sur une clé USB en démo à Paris. Seuls les adaptateurs changent.</li>
+  <li><strong>Testabilité.</strong> Chaque règle métier est testable sans monter une base de données réelle, sans lancer Claude, sans afficher la moindre page. Cela permet d'attraper les régressions avant qu'elles ne touchent un service réel.</li>
+  <li><strong>Évolutivité.</strong> Demain on remplace SQLite par PostgreSQL pour scaler ? Seul l'adaptateur change. Demain on remplace Claude par un modèle local pour confidentialité maximale ? Seul l'adaptateur change.</li>
+</ul>
+
+<!-- ====================================================================== -->
+<!-- §5 JOURNÉE TYPE                                                          -->
+<!-- ====================================================================== -->
+<h2 id="s5"><span class="anchor">§5</span>Cycle d'une journée type au Broc</h2>
+<p class="lead">Pour rendre concret le fonctionnement intégré de Broccers, voici comment se déroule une journée typique de service, racontée du point de vue de l'application.</p>
+
+<h3>7 h 30 — Ouverture, briefing matinal</h3>
+<p>Patrick (manager) arrive, ouvre l'application sur sa tablette. Il tape le bouton « ☀️ Briefing » dans la barre supérieure. L'IA Claude lui présente en 15 secondes : les shifts prévus aujourd'hui (4 employés), les courses urgentes (3 items en attente), les plats de la veille qui n'ont pas marché, et un rappel sur la livraison fournisseur de 10 h.</p>
+
+<h3>8 h 00 — Arrivée Mathieu (cuisinier)</h3>
+<p>Mathieu clock-in via PIN court sur la tablette de la cuisine. Le système ouvre automatiquement son shift en rôle <code>cook</code> (son rôle par défaut). Il consulte sa checklist d'onboarding (générée la veille par Claude) pour vérifier les HACCP du matin : température frigos, hygiène plan de travail, etc.</p>
+
+<h3>9 h 30 — Mise à jour de la carte du jour</h3>
+<p>Patrick a reçu une photo de la nouvelle suggestion du chef. Il ouvre l'onglet <code>📖 Carte</code> et clique sur « Importer depuis photo ». L'image est envoyée à Claude qui en 20 secondes extrait : « Tartare de saumon, 14 €, en entrée, allergènes poisson ». Patrick relit, ajoute l'allergène « moutarde » que Claude n'avait pas vu, et publie la carte v3.</p>
+
+<h3>10 h 00 — Livraison fournisseur</h3>
+<p>Le poissonnier est en avance. Patrick coche dans l'onglet <code>🛒 Courses</code> les items reçus. Le prix du saumon a augmenté de 2 €/kg : Patrick met à jour le prix d'achat dans l'onglet Ingrédients. Immédiatement, la marge du « Tartare de saumon » passe de 72 % à 65 % dans l'onglet <code>💶 Coûts</code>, code couleur jaune (en dessous du seuil cible mais au-dessus du seuil critique).</p>
+
+<h3>12 h 00 — Service midi commence</h3>
+<p>Kevin (serveur) prend les commandes via dictée vocale sur son téléphone : « Table 3, deux entrecôtes saignantes, un tartare, trois verres de Sancerre ». Claude transforme en 4 items structurés, validés d'un clic, envoyés en cuisine. Mathieu reçoit le ticket sur la tablette cuisine, démarre les cuissons. Le timer affiche en temps réel le temps écoulé sur chaque tâche.</p>
+
+<h3>13 h 15 — Rupture saumon</h3>
+<p>Mathieu n'a plus de saumon. Il tape l'icône 🚫 « Signaler rupture » sur la tablette cuisine, choisit « Tartare de saumon », et saisit la raison : « Plus de stock, prochaine livraison demain matin ». Instantanément, le tartare apparaît barré sur les téléphones des serveurs et sur les cartes QR client. Aucun client ne sera plus déçu.</p>
+
+<h3>15 h 00 — Pause de Mathieu</h3>
+<p>Mathieu prend sa pause légale (20 min minimum après 6 h continues, Art. L. 3121-16). Il clock-out pause via le bouton de la tablette. Le système enregistre le segment de pause et le reprendra automatiquement à son retour.</p>
+
+<h3>17 h 00 — Préparation du soir</h3>
+<p>Mathieu a préparé 25 brochettes pour le soir. Le service du soir est calme, il en reste 20 invendues à 23 h. Mathieu les déclare en gaspillage dans l'onglet <code>🗑️ Pertes</code> : raison « production non écoulée », valeur estimée 16 €. La donnée alimentera la décision de réduire la production des mardis soirs à l'avenir.</p>
+
+<h3>23 h 30 — Fermeture</h3>
+<p>Tout le monde clock-out. Patrick consulte l'onglet <code>📋 Journal</code> pour voir le récap de la journée : 47 tickets cuisine, 3 ruptures signalées, 1 changement de rôle (Kevin a fini en bartender), 1 modification de prix d'ingrédient, 1 perte déclarée. Demain matin, le briefing IA tiendra compte de tout ça.</p>
+
+<!-- ====================================================================== -->
+<!-- §6 MODULES FONCTIONNELS                                                 -->
+<!-- ====================================================================== -->
+<h2 id="s6"><span class="anchor">§6</span>Modules fonctionnels</h2>
+<p class="lead">Broccers est organisé en onze modules fonctionnels distincts mais interconnectés. Chacun correspond à un onglet de l'application, à un domaine du métier, et à un ensemble de fonctionnalités cohérentes.</p>
+
+<!-- 6.1 Personnel -->
+<div class="module" id="s6-1">
+  <div class="module-head">
+    <span class="icon">👥</span>
+    <h3>6.1 — Personnel &amp; ressources humaines</h3>
+  </div>
+  <p class="desc">Gestion de l'équipe, du pointage horaire, des pauses, des rôles, et de l'onboarding.</p>
+  <p>Ce module est le socle social de l'application. Il garantit que chaque heure travaillée est enregistrée avec preuve, que chaque rôle tenu sur chaque créneau est tracé, que la conformité au droit du travail est respectée, et que les nouveaux entrants sont guidés.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>CRUD employés</strong><span>Créer, éditer, archiver les profils. Chaque profil contient nom, rôles autorisés (capabilities), rôle par défaut, planning hebdomadaire, PIN court (kiosk) et PIN long (personnel), heures contractuelles.</span></li>
+    <li><strong>Pointage horaire (clock-in / clock-out)</strong><span>Démarrage et fin de service via PIN court sur la tablette de la cuisine, ou via l'app personnelle authentifiée. Chaque clock-in crée un shift et un segment de rôle.</span></li>
+    <li><strong>Multi-rôles dynamique</strong><span>Un employé peut avoir plusieurs rôles enregistrés. Le rôle effectif au démarrage du shift est résolu via : override manuel &gt; planning du jour &gt; rôle par défaut. Tout changement en cours de service ferme le segment courant et en ouvre un nouveau.</span></li>
+    <li><strong>Pauses légales et libres</strong><span>Le système distingue les pauses légales (couvertes par l'Art. L. 3121-16 — 20 min minimum dès 6 h continues) et les pauses libres. Une alerte non-bloquante notifie le manager si un employé approche du seuil sans avoir pris sa pause.</span></li>
+    <li><strong>Planning hebdomadaire</strong><span>Pour chaque employé, un mapping jour-de-la-semaine → rôle. Permet d'avoir un même profil qui est serveur le mardi et bartender le vendredi sans recréer le compte.</span></li>
+    <li><strong>Onboarding par rôle (HACCP-aware)</strong><span>Pour un nouvel employé, le manager déclenche la génération automatique d'une checklist par Claude. La checklist est adaptée au rôle (un cuisinier a des items HACCP, un serveur a des items service client) et coche les obligations légales obligatoires.</span></li>
+    <li><strong>Cocher/décocher items d'onboarding</strong><span>Au fur et à mesure de la formation, l'employé ou le manager coche les items effectués. Le journal trace qui a coché quoi à quel moment.</span></li>
+    <li><strong>Heatmap d'activité 7 derniers jours</strong><span>Vue grille employé × jour avec intensité de couleur proportionnelle aux heures travaillées. Permet d'identifier les déséquilibres de charge entre membres de l'équipe.</span></li>
+    <li><strong>Pourboires par shift</strong><span>Chaque shift peut recevoir un montant de pourboire (tipCents) enregistré par le manager. Sert au calcul de la rémunération réelle et à l'analyse de la performance par créneau.</span></li>
+    <li><strong>Archivage employé</strong><span>Un employé qui quitte le restaurant est archivé (pas supprimé) pour préserver l'historique. Ses shifts passés restent dans le journal, mais il disparaît des listes actives.</span></li>
+  </ul>
+</div>
+
+<!-- 6.2 Cartes -->
+<div class="module" id="s6-2">
+  <div class="module-head">
+    <span class="icon">📖</span>
+    <h3>6.2 — Cartes &amp; menus</h3>
+  </div>
+  <p class="desc">Création, édition, publication, impression et consultation publique de toutes les cartes du restaurant.</p>
+  <p>Le module Cartes est le pivot commercial du restaurant. Il gère toutes les cartes susceptibles d'exister (plats, vins, desserts, boissons, menus, brunch, carte du jour, autres), permet leur édition rapide, leur impression au format A4, leur consultation par les clients via QR code, et leur mise à jour instantanée en cas de rupture.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Cartes multi-types</strong><span>Huit types coexistent : plats (food), boissons (drinks), vins (wine), desserts (dessert), menus / formules, brunch, carte du jour (daily), autre. Plusieurs cartes peuvent être publiées simultanément (une par type).</span></li>
+    <li><strong>Éditeur visuel complet</strong><span>Création, édition, suppression de cartes, catégories et plats depuis l'interface. Réordonnancement par drag-and-drop. Édition inline du nom, du prix, de la description, de la disponibilité et des allergènes.</span></li>
+    <li><strong>Versioning des cartes</strong><span>Chaque modification incrémente la version. Une carte v3 publiée ne peut plus être altérée — pour la modifier, on crée une nouvelle version v4. Garantit la traçabilité des prix sur la durée.</span></li>
+    <li><strong>Allergènes INCO 14 obligatoires</strong><span>Conformité avec le règlement européen UE 1169/2011 : 14 allergènes catégorisés (gluten, lait, œufs, poisson, crustacés, mollusques, arachides, fruits à coque, soja, sésame, céleri, moutarde, sulfites, lupin) sélectionnables par item.</span></li>
+    <li><strong>Mode draft vs publié</strong><span>Une carte en cours d'édition est en draft et n'est pas visible au client. Au moment de la publication (clic explicite), elle devient la carte active et remplace l'ancienne dans tous les canaux (PDF, QR, app).</span></li>
+    <li><strong>Génération PDF A4 imprimable</strong><span>Export en un clic au format A4, design Broc (couleurs CAFÉ rouge brique + jaune chaud + crème). Allergènes INCO formatés, prix tabulaires, hiérarchie catégories / items respectée. Stocké dans <code>~/.broccers/pdf_exports/YYYY/MM/DD/</code>.</span></li>
+    <li><strong>Source / Derivation lineage</strong><span>Chaque PDF généré garde un lien explicite vers la version exacte de la carte dont il est issu. Permet de prouver des semaines plus tard que tel prix imprimé correspond bien à telle version publiée.</span></li>
+    <li><strong>Mode 86 / Rupture item</strong><span>Toggle inline depuis l'onglet Carte ou depuis l'onglet Cuisine. La raison de la rupture est obligatoire et tracée. L'item apparaît barré sur les cartes QR client et sur les tablettes serveurs immédiatement.</span></li>
+    <li><strong>Import depuis photo (IA Vision)</strong><span>Le manager prend en photo une carte (papier, ardoise, maquette graphiste, suggestion chef sur un post-it). Claude analyse l'image et extrait catégories, plats, prix en centimes, descriptions et allergènes en JSON structuré. La carte est créée en draft, le manager relit puis publie.</span></li>
+    <li><strong>Carte publique HTML via QR</strong><span>Pour chaque table, un QR code unique donne accès à la carte du jour en HTML responsive aux couleurs Broc. Lecture seule (pas d'authentification, pas de commande pour l'instant), mise à jour instantanée en cas de rupture.</span></li>
+  </ul>
+</div>
+
+<!-- 6.3 Cuisine -->
+<div class="module" id="s6-3">
+  <div class="module-head">
+    <span class="icon">🍳</span>
+    <h3>6.3 — Cuisine connectée</h3>
+  </div>
+  <p class="desc">Tickets cuisine, prise de commande vocale, recettes, étapes de cuisson, signalement de rupture.</p>
+  <p>Le module Cuisine élimine le papier et fluidifie la chaîne d'information entre la salle, la cuisine et le bar. Il s'appuie sur la dictée vocale et l'IA Claude pour transformer une commande parlée en ticket structuré, et sur des timers visibles pour rythmer le travail de la brigade.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Commande vocale dictée</strong><span>Le serveur dicte la commande sur son téléphone (« table 7, deux entrecôtes saignantes, un magret rosé avec frites, trois verres de Sancerre »). L'IA Claude la transforme en JSON structuré : table cible, items avec quantités, modificateurs (cuisson, accompagnement).</span></li>
+    <li><strong>STT Whisper Titan (optionnel)</strong><span>Pour la transcription audio en texte, Broccers peut utiliser Whisper hébergé sur le cluster Tailscale (machine Titan). En l'absence de Whisper, le serveur tape le texte directement.</span></li>
+    <li><strong>Tickets cuisine kanban</strong><span>Vue colonnes : drafts (à valider serveur), pending (envoyés en cuisine), in progress (en cours), ready (à servir). Permet à la cuisine et à la salle de voir l'état du service en un coup d'œil.</span></li>
+    <li><strong>Statut item de ticket</strong><span>Chaque item d'un ticket a son propre statut indépendant (waiting / cooking / ready / served). Permet de gérer des envois partiels (les entrées partent avant les plats).</span></li>
+    <li><strong>Recettes par menu item</strong><span>Chaque plat de la carte peut avoir une recette associée : liste d'étapes (préparation, cuisson, dressage, repos) avec une durée attendue par étape.</span></li>
+    <li><strong>Cooking tasks automatiques</strong><span>Quand un ticket est envoyé en cuisine, des tâches de cuisson sont créées automatiquement à partir des recettes des items. La brigade voit la liste, démarre, complète.</span></li>
+    <li><strong>Timer avec alerte overdue</strong><span>Pour chaque tâche démarrée, un compteur calcule le temps écoulé vs la durée attendue. Si overdue, l'item passe en rouge avec un picto d'alerte — le chef voit immédiatement quel poste est à la peine.</span></li>
+    <li><strong>Signalement de rupture par cuisinier</strong><span>Bouton dédié (FAB jaune 🚫 dans l'onglet Cuisine) pour qu'un cuisinier signale immédiatement un produit en rupture, choisisse l'item concerné, et précise la raison (« plus de saumon, livraison demain »). L'information se propage en moins de 2 secondes à toutes les vues.</span></li>
+  </ul>
+</div>
+
+<!-- 6.4 Courses -->
+<div class="module" id="s6-4">
+  <div class="module-head">
+    <span class="icon">🛒</span>
+    <h3>6.4 — Achats &amp; fournisseurs</h3>
+  </div>
+  <p class="desc">Listes de courses partagées par fournisseur, gestion des suppliers, items urgents.</p>
+  <p>Le module Achats remplace les listes papier dispersées (frigo, carnet de notes, post-it). Il organise les courses par fournisseur, permet de marquer les urgences, et permet à toute l'équipe de voir et cocher en temps réel.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Listes de courses multi-suppliers</strong><span>Création de listes thématiques (« courses semaine 23 », « livraison Métro mardi », « réassort urgent »). Chaque liste regroupe des items.</span></li>
+    <li><strong>Items checklist avec quantité &amp; urgence</strong><span>Chaque item porte nom, quantité, unité, fournisseur préféré, drapeau urgent. Cochable au fur et à mesure des achats.</span></li>
+    <li><strong>CRUD fournisseurs (suppliers)</strong><span>Référentiel centralisé : nom, contact, fréquence de livraison, produits typiques. Réutilisable depuis les items de course et depuis le module Ingrédients.</span></li>
+    <li><strong>Vue synchronisée</strong><span>Tous les utilisateurs voient la même liste en temps réel. Quand un cuisinier coche un item depuis la cuisine, le manager le voit disparaître depuis sa tablette.</span></li>
+  </ul>
+</div>
+
+<!-- 6.5 Marges -->
+<div class="module" id="s6-5">
+  <div class="module-head">
+    <span class="icon">💶</span>
+    <h3>6.5 — Marges &amp; coûts</h3>
+  </div>
+  <p class="desc">Calcul de marge en temps réel par plat, coût horaire main d'œuvre, substitution d'ingrédients.</p>
+  <p>C'est le module financier opérationnel. Il permet de répondre instantanément à la question « combien je gagne sur ce plat aujourd'hui, compte tenu des prix d'achat de la semaine et des charges sociales du moment ? » — alors que la comptabilité ne donne cette réponse qu'à la fin du mois suivant.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Référentiel ingrédients</strong><span>Catalogue d'ingrédients avec nom, unité (g, kg, ml, L, pcs, dz), prix moyen courant, fournisseur préféré, notes. Conversions d'unités automatiques (un prix au kilo se convertit en prix au gramme pour le calcul).</span></li>
+    <li><strong>Composition recette → ingrédients</strong><span>Chaque recette est composée d'ingrédients avec quantité et unité. Le calcul du coût matière est immédiat.</span></li>
+    <li><strong>Substitution d'ingrédient avec traçabilité</strong><span>Si on remplace un ingrédient (livraison incomplète, changement de fournisseur, conjoncture), on flag la substitution avec une raison. La marge est recalculée immédiatement, l'historique conserve l'ancien.</span></li>
+    <li><strong>Calcul de marge temps réel</strong><span>Pour chaque menu item, ratio (prix de vente − coût matière) / prix de vente, en pourcentage. Recalcul instantané quand un prix d'ingrédient change.</span></li>
+    <li><strong>Code couleur ROUGE / JAUNE / VERT paramétrable</strong><span>Le seuil rouge (critique) et le seuil jaune (à surveiller) sont définis dans les paramètres globaux. Profil par défaut : 60 % critique, 70 % objectif. Évolutif selon la conjoncture (charges, énergie, matières premières).</span></li>
+    <li><strong>Profils marge low_cost / standard / premium</strong><span>Quatre profils-types préconfigurés pour les seuils, ajustables individuellement.</span></li>
+    <li><strong>Taux horaires versionnés par employé/rôle</strong><span>Pour chaque employé et chaque rôle, un taux horaire historisé. Le calcul de coût d'un shift respecte le taux en vigueur au moment du shift, pas le taux actuel.</span></li>
+    <li><strong>Calcul du coût d'un shift segment par segment</strong><span>Un shift composé de plusieurs segments (Kevin commence serveur à 18 h à 12 €/h, devient bartender à 21 h à 14 €/h) est costé proprement par tranche, pas en moyenne approximative.</span></li>
+    <li><strong>Consommation staff (repas / boissons)</strong><span>Repas et boissons consommés par le personnel pendant ou avant service, marqués payés ou à débiter sur la paie. Sert au respect des conventions collectives et au calcul net.</span></li>
+    <li><strong>Charges sociales paramétrables</strong><span>Pourcentage de charges grevant le chiffre d'affaires (66 % par défaut pour le contexte FR). Modifiable depuis les paramètres si la conjoncture évolue.</span></li>
+  </ul>
+</div>
+
+<!-- 6.6 Pertes -->
+<div class="module" id="s6-6">
+  <div class="module-head">
+    <span class="icon">🗑️</span>
+    <h3>6.6 — Gaspillage &amp; pertes</h3>
+  </div>
+  <p class="desc">Déclaration et analyse des pertes alimentaires, suivi hebdomadaire avec breakdown par raison et par jour.</p>
+  <p>Module construit dans l'esprit de l'observabilité bienveillante : on déclare ce qui est jeté non pour culpabiliser mais pour comprendre où l'on perd. Une donnée régulière de pertes permet d'ajuster les productions, de revoir certains plats, ou de changer de fournisseur quand un produit s'avère systématiquement non vendable avant péremption.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Déclaration de perte en 30 secondes</strong><span>Bouton FAB rouge dans l'onglet Pertes. Saisie minimum : quoi, combien, unité, raison parmi 9 préconfigurées. Soumission immédiate.</span></li>
+    <li><strong>Neuf raisons préconfigurées</strong><span>Perte préparation, perte service, date dépassée, production non écoulée, repas staff, retour client, brûlé / raté, contamination, autre. Chaque raison alimente la statistique hebdo.</span></li>
+    <li><strong>Auto-estimation de la valeur perdue</strong><span>Si l'ingrédient déclaré est référencé dans le catalogue, le système calcule automatiquement la valeur en cents (quantité × prix unitaire). Le manager peut sur-écrire manuellement.</span></li>
+    <li><strong>Récap 7 derniers jours</strong><span>Total en € jetés, nombre de déclarations, evolutif vs semaine précédente.</span></li>
+    <li><strong>Breakdown par raison</strong><span>Quelle part du gaspillage est due à quelle cause. Permet d'identifier le levier d'amélioration prioritaire.</span></li>
+    <li><strong>Breakdown par jour</strong><span>Permet d'identifier le jour de la semaine le plus problématique (par exemple : production trop élevée pour les mardis soirs).</span></li>
+    <li><strong>Historique des 50 dernières pertes</strong><span>Liste détaillée pour analyse fine ou audit comptable.</span></li>
+    <li><strong>Seuil d'alerte hebdomadaire paramétrable</strong><span>Au-delà d'un montant configurable (100 € par défaut), une alerte non bloquante est levée au manager.</span></li>
+    <li><strong>Accès au signalement cuisinier + plongeur</strong><span>Pas réservé au manager : la brigade peut déclarer directement ses pertes (caissage, brûlure, contamination). Plus l'information est proche du terrain, plus elle est juste.</span></li>
+  </ul>
+</div>
+
+<!-- 6.7 Tables -->
+<div class="module" id="s6-7">
+  <div class="module-head">
+    <span class="icon">📱</span>
+    <h3>6.7 — Tables &amp; expérience client</h3>
+  </div>
+  <p class="desc">Topologie des tables, génération de QR codes uniques, consultation publique de la carte.</p>
+  <p>Le module Tables permet de matérialiser chaque emplacement physique du restaurant dans le système, de lui associer un QR code unique pour les clients, et de gérer la sécurité par rotation de secret si besoin.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Création de table avec label, capacité, position</strong><span>« T3 », 4 couverts, « terrasse côté rue ». Chaque table reçoit immédiatement un identifiant unique et un secret QR.</span></li>
+    <li><strong>QR code unique par table</strong><span>Le secret est un identifiant à 16 caractères généré aléatoirement. Combiné à l'ID de la table, il forme une URL unique du type <code>/menu/&lt;tableId&gt;/&lt;secret&gt;</code>.</span></li>
+    <li><strong>Rendu QR offline (qr_flutter)</strong><span>Le QR code est rendu côté navigateur, sans appel à un service externe. Zéro CDN, aucune donnée n'est envoyée à un tiers.</span></li>
+    <li><strong>Régénération de secret (anti-fraude)</strong><span>Si un QR est compromis (photographié et partagé hors restaurant, par exemple), un clic régénère un nouveau secret. L'ancienne URL est immédiatement invalidée.</span></li>
+    <li><strong>Désactivation de table</strong><span>Une table cassée ou hors service peut être désactivée. Son QR retourne 404 jusqu'à réactivation.</span></li>
+    <li><strong>Carte publique HTML responsive</strong><span>L'URL publique sert une page HTML aux couleurs Broc, optimisée mobile. Affichage des catégories, items, prix, allergènes. Les items en rupture sont barrés et marqués EN RUPTURE.</span></li>
+    <li><strong>Pas d'authentification client</strong><span>Le client n'a pas à créer de compte, télécharger d'app, ou se logger. Scan → carte. Simplicité maximale.</span></li>
+  </ul>
+</div>
+
+<!-- 6.8 Paramètres -->
+<div class="module" id="s6-8">
+  <div class="module-head">
+    <span class="icon">⚙️</span>
+    <h3>6.8 — Paramètres &amp; administration</h3>
+  </div>
+  <p class="desc">Paramètres globaux versionnés, accessibles uniquement au manager et au super-admin.</p>
+  <p>Centralise tous les leviers de configuration qui dépendent de la conjoncture ou des choix de l'établissement. Chaque modification est audit-loggée avec l'auteur et l'horodatage.</p>
+  <h4>Catégories de paramètres</h4>
+  <ul class="feats">
+    <li><strong>Marges</strong><span>Seuils ROUGE / JAUNE / CIBLE en pourcentage, profil global (low_cost / standard / premium), nombre maximum de décimales pour l'affichage.</span></li>
+    <li><strong>Pauses légales</strong><span>Durée minimale de pause (par défaut 20 min — Art. L. 3121-16), seuil d'heures consécutives déclenchant le besoin de pause (par défaut 6 h), tolérance avant alerte.</span></li>
+    <li><strong>Coûts</strong><span>Taux de charges sociales (66 % par défaut FR), seuil d'alerte gaspillage hebdo en cents, devise (€), taux de TVA applicable selon catégorie d'item.</span></li>
+    <li><strong>Vocal</strong><span>Activer / désactiver Whisper, refuser ou non les items 86 dans le parsing vocal, langue de transcription.</span></li>
+    <li><strong>Kiosk</strong><span>Durée d'inactivité avant déconnexion, taille de PIN court, retry max avant lockout.</span></li>
+    <li><strong>Notifications</strong><span>Canal de notification (interne, e-mail, WhatsApp via cluster), niveau de verbosité, gravité minimale.</span></li>
+    <li><strong>Interface utilisateur</strong><span>Thème (toujours Broc pour l'instant), langue par défaut, format des dates / heures.</span></li>
+    <li><strong>Feature flags (super-admin uniquement)</strong><span>Active ou désactive des modules entiers selon le contrat client. Voir §10 pour le détail du système.</span></li>
+  </ul>
+</div>
+
+<!-- 6.9 Journal -->
+<div class="module" id="s6-9">
+  <div class="module-head">
+    <span class="icon">📋</span>
+    <h3>6.9 — Journal &amp; audit</h3>
+  </div>
+  <p class="desc">Journal append-only de toutes les actions du système, filtrable par acteur, action, cible, date.</p>
+  <p>Le journal est la mémoire immuable du restaurant. Toute action significative — clock-in, changement de rôle, modification de prix, publication de carte, déclaration de gaspillage, ajustement de paramètre — y est consignée avec contexte complet. Aucune ligne ne peut être supprimée ni modifiée, seulement ajoutée.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Entrée standardisée</strong><span>Identifiant unique, horodatage UTC, acteur (qui a déclenché l'action), action (verbe normalisé du type <code>setting.changed</code>, <code>menu_card.published</code>, <code>food_waste.declared</code>), cible (l'objet affecté), payload (données contextuelles), raison optionnelle.</span></li>
+    <li><strong>Filtres par acteur, action, cible, date</strong><span>Permet de retrouver précisément ce qu'a fait un employé, ce qui s'est passé sur un item de menu, ou tout ce qui s'est passé un jour donné.</span></li>
+    <li><strong>Vue chronologique</strong><span>Affichage en ligne de temps, des entrées les plus récentes aux plus anciennes, avec mise en évidence des entrées importantes (modifications de prix, publications de carte, etc.).</span></li>
+    <li><strong>Append-only garanti</strong><span>Aucune route HTTP ne permet la modification ou la suppression d'une entrée. La base de données interdit techniquement le UPDATE / DELETE sur cette table.</span></li>
+    <li><strong>Export pour audit comptable</strong><span>Export CSV / JSON sur plage de dates pour usage externe (URSSAF, inspection du travail, comptable).</span></li>
+    <li><strong>Formulation bienveillante des alertes</strong><span>Les anomalies détectées (pause manquante, marge en dessous du seuil, gaspillage anormal) sont présentées comme des questions, non comme des sanctions.</span></li>
+  </ul>
+</div>
+
+<!-- 6.10 IA -->
+<div class="module" id="s6-10">
+  <div class="module-head">
+    <span class="icon">🤖</span>
+    <h3>6.10 — Assistant IA</h3>
+  </div>
+  <p class="desc">Briefing matinal, question libre, vision image, parsing vocal, onboarding — tout via Claude exécuté localement.</p>
+  <p>L'IA est utilisée partout dans l'application pour automatiser les tâches répétitives sans valeur ajoutée humaine : transcrire, extraire, résumer, suggérer. Elle ne décide jamais à la place de l'humain.</p>
+  <h4>Fonctionnalités principales</h4>
+  <ul class="feats">
+    <li><strong>Question libre avec contexte</strong><span>Le manager pose une question en français dans l'onglet Question. Claude reçoit la question avec en contexte la carte actuelle et les courses en attente, et répond en quelques secondes.</span></li>
+    <li><strong>Briefing matinal automatique</strong><span>Bouton ☀️ dans la barre supérieure. Claude rédige en quelques phrases : qui travaille aujourd'hui, quels plats sont à la carte, quelles courses urgentes, alertes éventuelles.</span></li>
+    <li><strong>Parsing vocal commande</strong><span>L'audio dicté par un serveur est transcrit (Whisper si dispo, texte sinon) puis Claude parse en JSON structuré : table cible, items, modificateurs.</span></li>
+    <li><strong>Vision image carte</strong><span>Une photo de carte papier ou de maquette est envoyée à Claude qui extrait catégories, items, prix, descriptions, allergènes.</span></li>
+    <li><strong>Génération d'onboarding par rôle</strong><span>Pour un nouvel employé, Claude génère une checklist de 10 à 15 items adaptés au rôle, intégrant les obligations HACCP / sécurité.</span></li>
+    <li><strong>Aucune API Anthropic directe</strong><span>Tous les appels à Claude passent par le binaire <code>claude</code> en subprocess (Claude Max via Tailscale). Aucune clé API n'est exposée, aucune donnée ne sort du réseau privé.</span></li>
+  </ul>
+</div>
+
+<!-- 6.11 Caméras IA -->
+<div class="module" id="s6-11">
+  <div class="module-head">
+    <span class="icon">📷</span>
+    <h3>6.11 — Caméras IA distribuées (ESP32-S3 Sense)</h3>
+  </div>
+  <p class="desc">Reconnaissance faciale, présence dans les zones, vision spatiale, détection de mouvements — via micro-caméras embarquées.</p>
+  <div class="callout warn">
+    <strong>Phase H — en cours de conception.</strong> Ce module est planifié pour le développement post-juillet 2026. Les concepts sont posés, le matériel est validé (ESP32-S3 Sense Seeed Studio XIAO, tests de reconnaissance faciale réussis), l'intégration au domaine reste à coder. Cette section décrit la cible fonctionnelle.
+  </div>
+  <p>Le module Caméras s'appuie sur un parc de micro-caméras ESP32-S3 Sense distribuées dans le restaurant (cuisine, salle, bar, entrée, terrasse) pour enrichir Broccers de capacités de perception spatiale temps réel. Chaque caméra publie ses événements vers le serveur central qui les corrèle et les rend disponibles aux modules métier.</p>
+  <h4>Matériel cible</h4>
+  <p>Seeed Studio <strong>XIAO ESP32-S3 Sense</strong> : module Wi-Fi compact (21 × 17,5 mm) intégrant un capteur photo OV2640 (jusqu'à 1600×1200), un microphone PDM, une carte microSD, et l'écosystème ESP32-S3 (Bluetooth, processeur dual-core, accélérations IA pour modèles légers). Coût unitaire faible, déploiement discret possible.</p>
+  <h4>Fonctionnalités prévues</h4>
+  <ul class="feats">
+    <li><strong>Reconnaissance faciale au pointage</strong><span>Une caméra à l'entrée du local de personnel reconnaît automatiquement l'employé qui arrive et déclenche le clock-in sans qu'il ait à saisir un PIN. La reconnaissance se fait localement sur l'ESP32 (modèle pré-entraîné), seul un identifiant employé sort de la caméra.</span></li>
+    <li><strong>Profils faciaux opt-in</strong><span>Chaque employé doit explicitement consentir et fournir une série de photos pour générer son profil. Le profil est stocké localement, jamais envoyé en externe.</span></li>
+    <li><strong>Présence dans les zones</strong><span>Le restaurant est découpé en zones logiques (cuisine, bar, salle, terrasse, entrée). Une caméra par zone détecte la présence humaine (sans reconnaître les personnes). Sert à mesurer la fréquentation et à comprendre où l'équipe a besoin de renfort.</span></li>
+    <li><strong>Heatmap flux client temps réel</strong><span>Agrégation des présences sur la journée pour produire une heatmap : à quelle heure quelle zone est saturée. Aide au dimensionnement des shifts.</span></li>
+    <li><strong>Détection de mouvements post-fermeture</strong><span>Hors heures d'ouverture, les caméras passent en mode sécurité : tout mouvement détecté déclenche une notification au manager. Pas d'enregistrement vidéo continu (privacy by design).</span></li>
+    <li><strong>Vision spatiale (compte couverts disponibles)</strong><span>Pour la terrasse notamment, une caméra peut estimer le nombre de couverts libres en temps réel et l'afficher dans Broccers pour aider à la prise de réservation.</span></li>
+    <li><strong>Privacy by design</strong><span>Pas d'enregistrement vidéo continu. Seuls les événements structurés (identifiant, type, horodatage, zone) sont envoyés au serveur. Aucune image ne quitte la caméra sauf lors de l'apprentissage initial des profils faciaux (opt-in).</span></li>
+    <li><strong>Accessibilité limitée au manager + super-admin</strong><span>L'onglet Caméras est masqué pour les autres rôles. Les notifications de mouvement post-fermeture vont au manager uniquement.</span></li>
+    <li><strong>Gated par feature flag</strong><span>Le module entier est sous le contrôle du flag <code>camera.face_recognition</code> (OFF par défaut). Permet de déployer Broccers sans caméras chez les établissements qui ne le souhaitent pas.</span></li>
+  </ul>
+  <h4>Architecture conceptuelle</h4>
+  <p>Les caméras ESP32-S3 communiquent avec Broccers via un protocole HTTP simple : chaque événement détecté (visage reconnu, présence, mouvement) est envoyé en POST vers <code>/api/camera-events</code> avec un payload structuré. Le serveur valide, journalise, et déclenche les actions métier (clock-in automatique, alerte manager, mise à jour heatmap). Aucun streaming vidéo, aucune dépendance temps réel critique : si une caméra tombe en panne, le restaurant continue de tourner.</p>
+</div>
+
+<!-- ====================================================================== -->
+<!-- §7 CATALOGUE EXHAUSTIF                                                  -->
+<!-- ====================================================================== -->
+<h2 id="s7"><span class="anchor">§7</span>Catalogue exhaustif des fonctionnalités</h2>
+<p class="lead">Liste numérotée et catégorisée des ~95 fonctionnalités actuellement livrées dans Broccers v0.7.0. Chaque entrée est résumée en une ou deux lignes.</p>
+
+<div class="catalog">
+  <h4>Personnel &amp; RH (Phases A, B, D)</h4>
+  <ol>
+    <li><strong>Création employé.</strong> Profil avec nom, capabilities, rôle défaut, planning, PIN court, PIN long, heures contractuelles.</li>
+    <li><strong>Édition employé.</strong> Modification des champs, conservation de l'historique.</li>
+    <li><strong>Archivage employé.</strong> Désactivation préservant l'historique des shifts passés.</li>
+    <li><strong>PIN court kiosk (4-6 chiffres bcrypt).</strong> Pour pointage rapide sur tablette partagée.</li>
+    <li><strong>PIN long personnel (8+ caractères).</strong> Pour accès depuis téléphone perso.</li>
+    <li><strong>Authentification JWT 24 h.</strong> Token signé HS256, expiration glissante.</li>
+    <li><strong>Rate-limit auth (5 / 15 min).</strong> Anti brute-force par IP.</li>
+    <li><strong>Capabilities multi-rôles (Set).</strong> Un employé peut cumuler plusieurs rôles.</li>
+    <li><strong>Rôle par défaut.</strong> Rôle pris automatiquement si pas d'override ni planning du jour.</li>
+    <li><strong>Planning hebdomadaire.</strong> Mapping jour-de-la-semaine → rôle.</li>
+    <li><strong>Clock-in / clock-out.</strong> Démarrage et fin de service avec horodatage UTC.</li>
+    <li><strong>Override de rôle au clock-in.</strong> Le manager peut imposer un rôle différent du planning.</li>
+    <li><strong>Multi-segments par shift.</strong> Changement de rôle en cours de service tracé en segments distincts.</li>
+    <li><strong>Pauses légales et libres.</strong> Compteur, distinction des deux types.</li>
+    <li><strong>Alerte pause manquante.</strong> Notification manager si seuil dépassé sans pause.</li>
+    <li><strong>Onboarding par rôle (HACCP-aware).</strong> Checklist générée par Claude adaptée au rôle.</li>
+    <li><strong>Cocher / décocher items d'onboarding.</strong> Suivi de progression avec auteur de la coche.</li>
+    <li><strong>Heatmap 7 jours.</strong> Vue grille employés × jours avec intensité de couleur.</li>
+    <li><strong>Pourboires par shift.</strong> Montant en cents enregistré par le manager.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Paie &amp; coûts main d'œuvre (Phase B)</h4>
+  <ol>
+    <li><strong>Taux horaires versionnés.</strong> Historique des taux par employé/rôle.</li>
+    <li><strong>Calcul coût d'un shift segment par segment.</strong> Respecte les changements de rôle et de taux.</li>
+    <li><strong>Consommation staff (paid / à-débiter).</strong> Repas et boissons consommés par le personnel.</li>
+    <li><strong>Charges sociales paramétrables.</strong> Pourcentage défini en paramètres (66 % FR par défaut).</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Cartes &amp; menus (Phase G)</h4>
+  <ol>
+    <li><strong>Création / édition / suppression carte.</strong> CRUD complet depuis l'interface.</li>
+    <li><strong>Versioning des cartes.</strong> Incrémentation à chaque modification publiée.</li>
+    <li><strong>8 types de cartes coexistants.</strong> Plats, boissons, vins, desserts, menus, brunch, daily, autre.</li>
+    <li><strong>Plusieurs cartes publiées simultanément.</strong> Une publiée par type.</li>
+    <li><strong>Catégories ordonnées par carte.</strong> Avec sortOrder configurable.</li>
+    <li><strong>Items ordonnés par catégorie.</strong> Réorganisation par drag-and-drop.</li>
+    <li><strong>Nom + description + prix + allergènes par item.</strong> Champs complets.</li>
+    <li><strong>Allergènes INCO 14 obligatoires.</strong> Conformité règlement UE 1169/2011.</li>
+    <li><strong>Mode draft vs publiée.</strong> Édition sans impact public tant que non publiée.</li>
+    <li><strong>Publication horodatée.</strong> Trace du moment exact de publication.</li>
+    <li><strong>Export PDF A4 imprimable.</strong> Rendu Dart natif aux couleurs Broc.</li>
+    <li><strong>Source / Derivation lineage.</strong> PDF lié à la version exacte de la carte.</li>
+    <li><strong>Mode 86 / Rupture item avec raison.</strong> Toggle inline + raison obligatoire.</li>
+    <li><strong>Carte publique HTML responsive via QR.</strong> Lecture seule, mise à jour temps réel.</li>
+    <li><strong>Import depuis photo (Claude Vision).</strong> Extraction automatique des données structurées.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Cuisine (Phase E)</h4>
+  <ol>
+    <li><strong>Commande vocale dictée serveur.</strong> Audio ou texte → ticket structuré.</li>
+    <li><strong>STT Whisper Titan optionnel.</strong> Transcription audio si Whisper dispo sur le cluster.</li>
+    <li><strong>Parsing Claude → ticket structuré.</strong> JSON avec items, modificateurs, table.</li>
+    <li><strong>Tickets kanban (drafts / pending / inProgress / ready).</strong> Vue colonnes.</li>
+    <li><strong>Recettes par menu item.</strong> Étapes ordonnées avec durée attendue.</li>
+    <li><strong>4 types d'étapes (prep / cooking / plating / rest).</strong> Caractérise chaque étape.</li>
+    <li><strong>Cooking tasks auto-créées au send-to-kitchen.</strong> Génération à partir des recettes.</li>
+    <li><strong>Timer avec alerte overdue.</strong> Item passe en rouge si durée dépassée.</li>
+    <li><strong>Statut item par ticket.</strong> Waiting / cooking / ready / served indépendant par item.</li>
+    <li><strong>Signalement rupture par cuisinier.</strong> Bouton dédié dans onglet Cuisine.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Achats &amp; fournisseurs</h4>
+  <ol>
+    <li><strong>Listes de courses par fournisseur.</strong> Organisation thématique.</li>
+    <li><strong>Items checklist avec urgent.</strong> Marquage prioritaire.</li>
+    <li><strong>Cocher / décocher en temps réel.</strong> Synchronisé entre tous les utilisateurs.</li>
+    <li><strong>CRUD suppliers.</strong> Référentiel des fournisseurs réutilisable.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Ingrédients &amp; marges (Phase F)</h4>
+  <ol>
+    <li><strong>Référentiel ingrédients.</strong> Catalogue centralisé avec prix moyen.</li>
+    <li><strong>Unités multiples avec conversions.</strong> g, kg, ml, L, pcs, dz interchangeables.</li>
+    <li><strong>Prix moyen courant par ingrédient.</strong> Mis à jour à chaque livraison.</li>
+    <li><strong>Recettes liées à ingrédients avec quantités.</strong> Composition complète.</li>
+    <li><strong>Substitution avec reason + flag.</strong> Traçabilité des changements.</li>
+    <li><strong>Calcul coût matière temps réel.</strong> Recalcul instantané à chaque changement.</li>
+    <li><strong>Marge brute par menu item.</strong> Pourcentage immédiat.</li>
+    <li><strong>Code couleur ROUGE / JAUNE / VERT paramétrable.</strong> Seuils dans Paramètres.</li>
+    <li><strong>Profil marge low_cost / standard / premium.</strong> Quatre presets ajustables.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Gaspillage &amp; pertes (Phase F)</h4>
+  <ol>
+    <li><strong>Déclaration perte (item ou ingrédient).</strong> Workflow rapide 30 sec.</li>
+    <li><strong>9 raisons préconfigurées.</strong> prepLoss, expiry, servingLoss, burnt, etc.</li>
+    <li><strong>Quantité + unité.</strong> Saisie typée avec dropdown unité.</li>
+    <li><strong>Auto-estimation valeur depuis ingrédient.</strong> Calcul si ingrédient connu.</li>
+    <li><strong>Notes optionnelles.</strong> Contexte libre.</li>
+    <li><strong>Récap 7 derniers jours.</strong> Total € + nombre.</li>
+    <li><strong>Breakdown par raison.</strong> Identification du levier prioritaire.</li>
+    <li><strong>Breakdown par jour.</strong> Identification du jour critique.</li>
+    <li><strong>Historique 50 dernières pertes.</strong> Liste détaillée chronologique.</li>
+    <li><strong>Seuil alerte gaspillage hebdo paramétrable.</strong> Notification non bloquante.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Tables &amp; QR clients (Phase F)</h4>
+  <ol>
+    <li><strong>Création tables avec label / capacité / position.</strong> Topologie configurable.</li>
+    <li><strong>QR secret unique par table (16 chars).</strong> Généré aléatoirement.</li>
+    <li><strong>Régénération secret anti-fraude.</strong> Invalidation immédiate de l'ancien.</li>
+    <li><strong>Désactivation table.</strong> Hors service propre.</li>
+    <li><strong>URL publique consultation carte.</strong> /menu/&lt;id&gt;/&lt;secret&gt;</li>
+    <li><strong>HTML responsive aux couleurs Broc.</strong> Design CAFÉ rouge + jaune.</li>
+    <li><strong>Rendu QR offline (qr_flutter).</strong> Aucun CDN externe.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Paramètres (Phase F)</h4>
+  <ol>
+    <li><strong>Settings versionnés manager-only.</strong> Audit log de toute modification.</li>
+    <li><strong>4 catégories : margins / breaksLegal / costs / voice.</strong> Organisation UI.</li>
+    <li><strong>Validation type / bornes / enum.</strong> Refus côté serveur des valeurs invalides.</li>
+    <li><strong>Audit log de toute modification.</strong> Acteur + ancienne / nouvelle valeur.</li>
+    <li><strong>Édition typée (int / double / enum / bool / string).</strong> UI dialogs adaptés.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Journal &amp; audit (Phase A)</h4>
+  <ol>
+    <li><strong>SgEventJournalEntry pour tracer tout.</strong> Entrée standardisée.</li>
+    <li><strong>Actor + action + target + payload + reason.</strong> Contexte complet.</li>
+    <li><strong>Filtres par acteur / action / date / target.</strong> Recherche fine.</li>
+    <li><strong>Vue chronologique.</strong> Du plus récent au plus ancien.</li>
+    <li><strong>Audit immuable (append-only).</strong> Garanti côté code et BD.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>IA &amp; assistant</h4>
+  <ol>
+    <li><strong>Question libre à Claude avec contexte.</strong> Carte + courses en input.</li>
+    <li><strong>Briefing matinal automatique.</strong> Bouton ☀️ AppBar.</li>
+    <li><strong>Génération onboarding HACCP-aware.</strong> Checklist par rôle.</li>
+    <li><strong>Génération PDF carte (Dart natif).</strong> Layout A4 imprimable.</li>
+    <li><strong>Parsing voix → ticket.</strong> Audio ou texte → JSON structuré.</li>
+    <li><strong>Vision image → carte.</strong> Photo → JSON catégories + items.</li>
+    <li><strong>Aucune API Anthropic directe.</strong> claude -p subprocess via Tailscale uniquement.</li>
+  </ol>
+</div>
+
+<div class="catalog">
+  <h4>Déploiement &amp; infra</h4>
+  <ol>
+    <li><strong>Tailscale only par défaut.</strong> Aucun port public.</li>
+    <li><strong>Mode kiosk tablette cuisine.</strong> PIN court + auto-relogout.</li>
+    <li><strong>PWA Flutter Web cross-platform.</strong> Téléphone, tablette, ordinateur.</li>
+    <li><strong>SQLite WAL mode.</strong> Performance lecture-écriture concurrente.</li>
+    <li><strong>PDF natif Dart (package:pdf).</strong> Pas de dépendance LibreOffice / wkhtmltopdf.</li>
+  </ol>
+</div>
+
+<div class="callout success">
+  <strong>~95 fonctionnalités opérationnelles aujourd'hui.</strong> S'y ajoutent les modules de la Phase H (caméras IA) et de la Phase I (portabilité Docker / USB / feature flags / multi-DB) détaillés en §10 et §11.
+</div>
+
+<!-- ====================================================================== -->
+<!-- §8 WORKFLOWS                                                            -->
+<!-- ====================================================================== -->
+<h2 id="s8"><span class="anchor">§8</span>Workflows transversaux</h2>
+<p class="lead">Au-delà des modules pris isolément, c'est la coordination entre eux qui fait la valeur de Broccers. Voici cinq parcours opérationnels qui montrent comment les modules se parlent.</p>
+
+<div class="workflow">
+  <div class="title">Workflow 1 — Cuisinier signale une rupture, la carte client est mise à jour partout en 2 secondes</div>
+  <div class="actors">Acteurs : cuisinier · serveur · client</div>
+  <ol>
+    <li>Le cuisinier, dans l'onglet Cuisine, tape le FAB jaune 🚫 « Signaler rupture ».</li>
+    <li>Il choisit l'item concerné dans une liste filtrée des plats actuellement disponibles.</li>
+    <li>Il précise la raison textuelle (« plus de saumon, livraison demain matin »).</li>
+    <li>Le serveur envoie un POST vers <code>/api/menu/items/&lt;id&gt;/availability</code> avec available=false et la raison.</li>
+    <li>La base de données met à jour l'item en moins de 50 ms, le journal d'audit consigne l'événement.</li>
+    <li>Sur le téléphone du serveur, la prochaine commande qui essaie d'inclure cet item le présente barré.</li>
+    <li>Sur le QR client de toutes les tables, la prochaine page chargée affiche l'item barré et tagué EN RUPTURE.</li>
+    <li>Le manager, dans son journal, voit l'événement avec acteur, item, raison, horodatage.</li>
+  </ol>
+</div>
+
+<div class="workflow">
+  <div class="title">Workflow 2 — Manager ajuste le seuil de marge, tous les plats sont recoloriés</div>
+  <div class="actors">Acteurs : manager (super-admin) · serveur</div>
+  <ol>
+    <li>Le contexte économique change : les charges augmentent, le manager veut être plus strict sur les marges.</li>
+    <li>Il ouvre l'onglet Paramètres, catégorie « Marges ».</li>
+    <li>Il modifie le seuil ROUGE de 60 % à 65 % via le dialog d'édition typé.</li>
+    <li>Un PUT vers <code>/api/settings/margin.threshold_red_pct</code> est envoyé.</li>
+    <li>Le serveur valide la borne (0 à 100), enregistre la nouvelle valeur, journalise.</li>
+    <li>Au prochain affichage de la liste des plats, chaque plat est recolorisé selon le nouveau seuil. Les plats à marge entre 60 % et 65 % passent du jaune au rouge.</li>
+    <li>Le manager identifie immédiatement les plats à problème et peut décider de les retirer, d'en augmenter le prix, ou de changer de fournisseur.</li>
+  </ol>
+</div>
+
+<div class="workflow">
+  <div class="title">Workflow 3 — Serveur dicte une commande, la cuisine la voit en 5 secondes</div>
+  <div class="actors">Acteurs : serveur · IA (Whisper + Claude) · cuisinier</div>
+  <ol>
+    <li>Le serveur ouvre l'onglet Cuisine sur son téléphone et tape le FAB rouge « Nouvelle commande vocale ».</li>
+    <li>Il dicte : « Table 7, deux entrecôtes saignantes, un magret rosé avec frites, trois Sancerre ».</li>
+    <li>L'audio est envoyé à Whisper (sur Titan via Tailscale) pour transcription, puis le texte est envoyé à Claude.</li>
+    <li>Claude renvoie un JSON structuré : table 7, 4 items (2× entrecôte, 1× magret, 3× Sancerre), modificateurs (saignant, rosé, frites en accompagnement).</li>
+    <li>Le serveur visualise le draft du ticket à l'écran et valide d'un clic.</li>
+    <li>Le ticket passe en pending puis envoyé en cuisine : les cooking tasks sont auto-créées à partir des recettes.</li>
+    <li>Le cuisinier voit le nouveau ticket sur sa tablette, démarre les tâches, le timer tourne.</li>
+    <li>Au fil de l'avancement, les items passent de cooking à ready. Le runner voit ready et va débarrasser / apporter.</li>
+  </ol>
+</div>
+
+<div class="workflow">
+  <div class="title">Workflow 4 — Manager importe une carte depuis une photo et la publie en 5 minutes</div>
+  <div class="actors">Acteurs : manager · IA (Claude Vision)</div>
+  <ol>
+    <li>Le chef a griffonné sur une ardoise les plats du jour. Le manager prend la photo avec son téléphone.</li>
+    <li>Onglet Carte, bouton « Importer depuis photo », sélection du fichier image.</li>
+    <li>Le client envoie l'image en POST vers <code>/api/menu/cards/import-image?kind=daily</code>.</li>
+    <li>Le serveur sauve l'image en tmp, lance <code>claude -p</code> avec prompt + référence à la photo.</li>
+    <li>Claude analyse, extrait, renvoie un JSON avec catégories, items, prix en centimes, allergènes détectés.</li>
+    <li>Le serveur crée une carte draft de type « daily », pré-remplie avec les éléments extraits.</li>
+    <li>L'éditeur de carte s'ouvre automatiquement avec le draft pour relecture.</li>
+    <li>Le manager corrige les éventuelles erreurs d'OCR, ajoute un allergène oublié, ajuste un prix.</li>
+    <li>Il clique sur « Publier ». La carte devient active, le PDF est régénérable d'un clic.</li>
+    <li>Les QR clients reflètent immédiatement la nouvelle carte du jour.</li>
+  </ol>
+</div>
+
+<div class="workflow">
+  <div class="title">Workflow 5 — Cuisinier déclare une perte, le manager voit l'impact financier de la semaine</div>
+  <div class="actors">Acteurs : cuisinier · manager</div>
+  <ol>
+    <li>20 brochettes préparées pour le service du mardi n'ont pas été vendues.</li>
+    <li>Le cuisinier ouvre l'onglet Pertes, tape le FAB « Déclarer une perte ».</li>
+    <li>Il saisit : label « Brochettes poulet », quantité 20, unité pcs, raison « production non écoulée », valeur estimée 16 € (auto-calculée si brochettes référencées en ingrédient).</li>
+    <li>Le serveur enregistre la déclaration, journalise l'événement, retourne la confirmation.</li>
+    <li>Le récap de la semaine se met à jour : total 7 j passe de 30 € à 46 €, le mardi soir gagne 16 € de plus dans le breakdown par jour.</li>
+    <li>Le manager, lors de sa revue hebdomadaire, voit que le mardi soir représente 50 % du gaspillage de la semaine et décide de réduire la production des mardis de 30 %.</li>
+    <li>La donnée alimente l'analyse continue de l'efficience du service.</li>
+  </ol>
+</div>
+
+<!-- ====================================================================== -->
+<!-- §9 SÉCURITÉ                                                              -->
+<!-- ====================================================================== -->
+<h2 id="s9"><span class="anchor">§9</span>Sécurité, confidentialité, conformité</h2>
+<p class="lead">Broccers respecte par défaut quatre cadres réglementaires et applique cinq mesures techniques pour protéger les données du restaurant et de ses employés.</p>
+
+<h3>Cadres réglementaires respectés</h3>
+<h4>RGPD (Règlement général sur la protection des données)</h4>
+<p>Toutes les données personnelles (nom des employés, photos faciales le cas échéant, horaires) sont stockées <strong>localement</strong> sur la machine du restaurant. Aucun transfert vers un service tiers, aucune dépendance cloud, aucune télémétrie envoyée à l'éditeur. La conservation des données suit les recommandations CNIL pour les obligations RH (5 ans pour les bulletins de paie). Le droit à l'effacement est implémentable par export + suppression manuelle de la BD.</p>
+<h4>INCO (Règlement UE 1169/2011)</h4>
+<p>Les 14 allergènes obligatoires sont gérés en standard sur chaque item de menu. Les cartes imprimées (PDF A4) et les cartes publiques (QR) affichent les allergènes de manière claire et permanente, comme exigé par le règlement.</p>
+<h4>Droit du travail français — Art. L. 3121-16</h4>
+<p>L'obligation de pause d'au moins 20 minutes après 6 heures de travail consécutives est gérée nativement. Le système alerte de manière non bloquante quand un employé approche du seuil sans avoir pris sa pause, permettant au manager de l'inviter à la prendre. Les segments de pause sont distincts des segments de travail dans le journal, facilitant l'audit URSSAF / inspection du travail.</p>
+<h4>Code de commerce — Conservation comptable</h4>
+<p>Le journal d'audit est append-only et exportable au format JSON / CSV. Permet de produire les justificatifs nécessaires en cas de contrôle (modifications de prix, déclarations de perte, paiements de pourboires).</p>
+
+<h3>Mesures techniques</h3>
+<ul>
+  <li><strong>Authentification PIN bcrypt 12 rounds.</strong> Le PIN n'est jamais stocké en clair. Vérification résistante aux attaques de timing.</li>
+  <li><strong>JWT HS256 24 h.</strong> Token signé avec secret aléatoire (généré au démarrage si absent). Expiration glissante pour limiter la fenêtre d'attaque.</li>
+  <li><strong>Rate-limit 5 tentatives / 15 minutes par IP.</strong> Anti brute-force sur la route d'authentification.</li>
+  <li><strong>Tailscale only par défaut.</strong> Aucun port public exposé sur Internet. L'accès distant nécessite un compte Tailscale autorisé.</li>
+  <li><strong>QR secret rotatif.</strong> Les QR codes des tables peuvent être régénérés à volonté, invalidant immédiatement les anciens. Anti-partage non autorisé.</li>
+</ul>
+
+<!-- ====================================================================== -->
+<!-- §10 PORTABILITÉ                                                          -->
+<!-- ====================================================================== -->
+<h2 id="s10"><span class="anchor">§10</span>Portabilité &amp; déploiement</h2>
+<p class="lead">Broccers est conçu dès le départ pour être déployable selon plusieurs modes, en fonction du contexte d'usage : production maison, démo nomade, ou déploiement chez un client. Le super-admin contrôle la configuration et la visibilité des modules via un système de feature flags.</p>
+
+<h3>Mode A — Tailscale (mode production maison)</h3>
+<p>Le serveur tourne sur le Mac Studio du restaurant. L'application Flutter Web est servie en parallèle sur un autre port. L'accès se fait via Tailscale (réseau privé chiffré) depuis n'importe quel appareil enrôlé dans le tailnet. C'est le mode standard pour l'exploitation au Broc Café.</p>
+
+<h3>Mode B — Docker (autonomie réseau)</h3>
+<p>Pour un déploiement chez un autre client qui ne souhaite pas dépendre de Tailscale, Broccers se déploie en deux containers Docker :</p>
+<ul>
+  <li>Un container <code>br_server</code> (binaire Dart compilé en exe, image Alpine légère).</li>
+  <li>Un container <code>br_web</code> (nginx servant le build statique Flutter Web).</li>
+  <li>Un volume Docker pour persister la base SQLite et les exports PDF.</li>
+  <li>Un fichier <code>docker-compose.yml</code> orchestrant le tout.</li>
+</ul>
+<p>Le client peut alors faire tourner Broccers sur son propre serveur (Linux, Mac, Windows avec WSL) sans dépendance externe.</p>
+
+<h3>Mode C — USB portable (démo nomade)</h3>
+<p>Pour des démonstrations chez des clients potentiels, Broccers est packageable sur une simple clé USB :</p>
+<ul>
+  <li>Un script <code>tools/build-portable.sh</code> compile le binaire pour le Mac / Linux / Windows cible.</li>
+  <li>Le build Flutter Web release est généré et copié sur la clé.</li>
+  <li>Un launcher <code>launch.sh</code> (ou <code>launch.bat</code>) lance le serveur et ouvre le navigateur sur la bonne URL.</li>
+  <li>Une base SQLite vide (ou pré-remplie de données de démo) est embarquée.</li>
+  <li>Tout fonctionne offline, sans installation, sans réseau.</li>
+</ul>
+<p>Le commercial peut ainsi présenter Broccers chez n'importe quel restaurateur en démarrant son ordinateur portable et en branchant la clé.</p>
+
+<h3>DB URL configurable</h3>
+<p>Le chemin de la base de données est défini par la variable d'environnement <code>BR_DB_PATH</code>. Le super-admin peut donc :</p>
+<ul>
+  <li>Avoir une base par client (démo restaurant A, démo restaurant B, base réelle Broc).</li>
+  <li>Switcher facilement entre instances en relançant le serveur avec une autre valeur.</li>
+  <li>Sauvegarder / restaurer une instance complète en copiant simplement le fichier SQLite.</li>
+</ul>
+
+<h3>Feature flags &amp; politique de licence</h3>
+<p>Le super-admin dispose d'un système de drapeaux logiciels permettant d'activer ou de désactiver des modules entiers. Chaque drapeau a une clé, un libellé, une description, un état activé / désactivé, et est persisté en base avec audit log.</p>
+<h4>Drapeaux disponibles (sélection)</h4>
+<table>
+  <thead><tr><th>Drapeau</th><th>Module</th><th>Défaut</th><th>Usage typique</th></tr></thead>
+  <tbody>
+    <tr><td><code>feature.kitchen.voice_orders</code></td><td>Cuisine</td><td>ON</td><td>Activé chez les clients qui veulent la dictée vocale.</td></tr>
+    <tr><td><code>feature.menu.import_image</code></td><td>Cartes</td><td>ON</td><td>Vision IA pour import photo carte.</td></tr>
+    <tr><td><code>feature.camera.face_recognition</code></td><td>Caméras</td><td>OFF</td><td>Phase H, activé chez les clients qui ont commandé les caméras ESP32.</td></tr>
+    <tr><td><code>feature.tips.tracking</code></td><td>Personnel</td><td>ON</td><td>Suivi pourboires shift par shift.</td></tr>
+    <tr><td><code>feature.briefing.morning</code></td><td>IA</td><td>ON</td><td>Briefing matinal automatique.</td></tr>
+    <tr><td><code>feature.kiosk.mode</code></td><td>Personnel</td><td>ON</td><td>Mode tablette partagée cuisine.</td></tr>
+    <tr><td><code>feature.qr.public_menu</code></td><td>Tables</td><td>ON</td><td>QR consultation client.</td></tr>
+    <tr><td><code>feature.reports.heatmap</code></td><td>Personnel</td><td>ON</td><td>Heatmap 7 jours équipe.</td></tr>
+    <tr><td><code>feature.marges.compute</code></td><td>Marges</td><td>ON</td><td>Calcul de marge temps réel — pourrait être désactivé chez les clients qui n'achètent que le module Cuisine.</td></tr>
+    <tr><td><code>feature.advanced_settings</code></td><td>Admin</td><td>OFF (clients tiers)</td><td>Accès aux paramètres avancés (charges sociales, seuils, profils). ON uniquement pour le super-admin Stowy.</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <strong>Politique de licence Stowy Agency.</strong> Les drapeaux permettent de commercialiser Broccers en modules indépendants (« pack Cuisine », « pack Marges + Pertes », « pack complet ») sans dupliquer le code source. Le super-admin Stowy garde l'accès complet en interne pour démontrer la totalité du produit, tandis qu'un client final ne voit que ce qu'il a acheté. Cela évite qu'un client copie le produit et le revende à son tour avec toutes les fonctionnalités.
+</div>
+
+<!-- ====================================================================== -->
+<!-- §11 ROADMAP                                                              -->
+<!-- ====================================================================== -->
+<h2 id="s11"><span class="anchor">§11</span>Roadmap par phases</h2>
+<p class="lead">Broccers est développé par phases nommées de A à K+. Chaque phase apporte un ensemble cohérent de fonctionnalités et est livrée avec sa documentation, son catalogue mis à jour et ses tests.</p>
+
+<div class="phase-card done">
+  <span class="label">PHASE A</span><strong>Multi-rôles + Journal observability — livrée</strong>
+  <p>Multi-rôles dynamique, segments de shift, journal d'audit append-only, formulation bienveillante des alertes.</p>
+</div>
+
+<div class="phase-card done">
+  <span class="label">PHASE B</span><strong>Taux horaires + consommation staff + coût shift — livrée</strong>
+  <p>Versioning des taux horaires, calcul de coût par segment, consommation staff, charges paramétrables.</p>
+</div>
+
+<div class="phase-card done">
+  <span class="label">PHASE D</span><strong>Briefing IA + pourboires + heatmap + onboarding — livrée</strong>
+  <p>Briefing matinal Claude, suivi pourboires shift, heatmap 7 jours, onboarding HACCP-aware par rôle.</p>
+</div>
+
+<div class="phase-card done">
+  <span class="label">PHASE E</span><strong>Commande vocale + recettes + cuissons — livrée</strong>
+  <p>Dictée vocale Whisper + Claude, tickets kanban, recettes étapes durées, cooking tasks auto + timer overdue.</p>
+</div>
+
+<div class="phase-card done">
+  <span class="label">PHASE F</span><strong>Settings + ingrédients + marges + pertes + 86 + tables QR — livrée</strong>
+  <p>Paramètres versionnés évolutifs, référentiel ingrédients, calcul marges temps réel, tracker gaspillage, Mode 86, QR codes tables.</p>
+</div>
+
+<div class="phase-card done">
+  <span class="label">PHASE G</span><strong>Éditeur multi-types + import photo IA + QR offline — livrée</strong>
+  <p>8 types de cartes coexistants, éditeur visuel complet, import depuis photo (Claude Vision), rendu QR 100 % offline, Mode 86 accessible cuisinier.</p>
+</div>
+
+<div class="phase-card next">
+  <span class="label">PHASE H</span><strong>Caméras IA distribuées ESP32-S3 Sense — en cours de conception</strong>
+  <p>Reconnaissance faciale opt-in pour clock-in, présence dans les zones, heatmap flux client temps réel, détection mouvements post-fermeture, vision spatiale, privacy by design. Matériel validé, intégration domain à coder.</p>
+</div>
+
+<div class="phase-card next">
+  <span class="label">PHASE I</span><strong>Portabilité complète — en cours de cette session</strong>
+  <p>Feature flags, DB URL configurable, Docker compose, USB portable, politique de licence par drapeaux.</p>
+</div>
+
+<div class="phase-card future">
+  <span class="label">PHASE J</span><strong>Commande au QR client — planifiée</strong>
+  <p>Le client scanne le QR de sa table et peut commander directement depuis son téléphone, avec validation par le serveur avant envoi en cuisine.</p>
+</div>
+
+<div class="phase-card future">
+  <span class="label">PHASE K</span><strong>Réservations — planifiée</strong>
+  <p>Gestion des réservations en ligne et au téléphone, vue planning par service, intégration agenda.</p>
+</div>
+
+<div class="phase-card future">
+  <span class="label">PHASE L+</span><strong>Suggestions IA mets/vins, tuteur IA serveur, tableau de bord financier mensuel — exploration</strong>
+  <p>Accords mets-vins automatiques, jeu de rôle de formation pour les nouveaux serveurs, dashboards comptables temps réel, connecteurs caisse / TPE / livraison.</p>
+</div>
+
+<!-- ====================================================================== -->
+<!-- §12 ARCHITECTURE TECHNIQUE                                              -->
+<!-- ====================================================================== -->
+<h2 id="s12"><span class="anchor">§12</span>Architecture technique (résumé)</h2>
+<p class="lead">Cette section reste volontairement haut-niveau. Le détail technique exhaustif est dans <a href="/docs/product">/docs/product</a>.</p>
+
+<h3>Stack</h3>
+<table>
+  <tbody>
+    <tr><td>Langage backend &amp; frontend</td><td>Dart 3.8+ (workspace monorepo)</td></tr>
+    <tr><td>UI</td><td>Flutter Web — PWA cross-platform (téléphone, tablette, ordinateur)</td></tr>
+    <tr><td>Serveur HTTP</td><td>shelf + shelf_router (port 8444)</td></tr>
+    <tr><td>Base de données</td><td>SQLite 3 mode WAL (lecture-écriture concurrente)</td></tr>
+    <tr><td>PDF</td><td>package:pdf — Dart natif, aucune dépendance LibreOffice / wkhtmltopdf</td></tr>
+    <tr><td>QR codes</td><td>qr_flutter — rendu offline, aucun CDN</td></tr>
+    <tr><td>Authentification</td><td>bcrypt (12 rounds) + JWT HS256 24 h</td></tr>
+    <tr><td>IA</td><td>Claude Max via <code>claude -p</code> en subprocess sur cluster Tailscale</td></tr>
+    <tr><td>Réseau</td><td>Tailscale (mode A) ou Docker network (mode B) ou loopback (mode C)</td></tr>
+    <tr><td>Hébergement</td><td>Mac Studio sur place — pas de cloud public</td></tr>
+  </tbody>
+</table>
+
+<h3>Patterns &amp; conventions</h3>
+<ul>
+  <li><strong>Clean Architecture 4 couches</strong> stricte (Domain / Adapter / Provider / UI).</li>
+  <li><strong>Result&lt;T, E&gt;</strong> pour le retour des cas d'usage — pas de <code>throw</code> en traversée de couches.</li>
+  <li><strong>Port / Adapter universel</strong> pour chaque dépendance externe (BD, IA, PDF, caméras).</li>
+  <li><strong>Préfixe Sg</strong> sur toute classe / enum publique du domaine (héritage SG Framework Stowy).</li>
+  <li><strong>Command-First</strong> : chaque fonctionnalité existe en CLI (TestControlServer) avant d'être en UI.</li>
+  <li><strong>Versioning sémantique</strong> + CHANGELOG.md à chaque package modifié.</li>
+  <li><strong>Migrations idempotentes</strong> côté SQLite : un même binaire peut être lancé sur une DB v0 ou v7 sans manipulation.</li>
+</ul>
+
+<!-- ====================================================================== -->
+<!-- §13 GLOSSAIRE                                                            -->
+<!-- ====================================================================== -->
+<h2 id="s13"><span class="anchor">§13</span>Glossaire</h2>
+<p class="lead">Définitions des termes spécifiques au domaine Broccers.</p>
+
+<dl class="glossary">
+  <dt>Mode 86</dt>
+  <dd>Terme métier de la restauration anglo-saxonne signifiant qu'un plat n'est plus disponible. Dans Broccers, c'est l'action de signaler qu'un item de menu est en rupture, avec sa raison, qui se propage immédiatement à toutes les vues (carte client, ticket cuisine, app serveur).</dd>
+
+  <dt>INCO</dt>
+  <dd>Règlement UE 1169/2011 sur l'Information du Consommateur (INformation des COnsommateurs sur les denrées alimentaires). Impose l'affichage des 14 allergènes principaux sur toute carte de restaurant.</dd>
+
+  <dt>HACCP</dt>
+  <dd>Hazard Analysis Critical Control Points. Système de management de la sécurité alimentaire obligatoire en restauration. Broccers intègre les obligations HACCP dans la génération d'onboarding par rôle.</dd>
+
+  <dt>Shift</dt>
+  <dd>Présence globale d'un employé entre son clock-in et son clock-out. Un shift peut contenir plusieurs segments si l'employé change de rôle en cours.</dd>
+
+  <dt>Segment</dt>
+  <dd>Intervalle au sein d'un shift pendant lequel l'employé tient un rôle donné. Un shift Kevin de 12 h à 23 h avec passage serveur → bartender à 18 h contient 2 segments.</dd>
+
+  <dt>Capability</dt>
+  <dd>Rôle qu'un employé sait tenir. Un employé peut avoir plusieurs capabilities (serveur + bartender + runner) dans son profil. Le rôle effectif au démarrage du shift est résolu via override / planning / défaut.</dd>
+
+  <dt>Cooking task</dt>
+  <dd>Tâche unitaire de cuisine générée automatiquement à partir d'une étape de recette quand un ticket est envoyé en cuisine. Possède un statut (pending / inProgress / completed) et un timer.</dd>
+
+  <dt>Observability bienveillante</dt>
+  <dd>Approche du journal d'audit chez Stowy : tracer toutes les actions non pour fliquer ou réprimander, mais pour comprendre et améliorer. Les alertes sont formulées comme des questions, jamais comme des sanctions.</dd>
+
+  <dt>Source / Derivation</dt>
+  <dd>Pattern de traçabilité où chaque dérivé (PDF imprimé, export CSV, copie partagée) garde un lien explicite vers sa source exacte (version de carte, date d'extraction, paramètres utilisés).</dd>
+
+  <dt>Tailscale</dt>
+  <dd>Service de réseau privé virtuel (VPN) basé sur WireGuard. Permet de connecter de manière chiffrée plusieurs appareils dans un même tailnet sans configuration réseau lourde. Broccers est accessible uniquement via Tailscale par défaut.</dd>
+
+  <dt>PWA</dt>
+  <dd>Progressive Web App. Application web installable sur l'écran d'accueil d'un téléphone ou d'une tablette, fonctionnant comme une app native. Broccers est une PWA Flutter Web.</dd>
+
+  <dt>SgEventJournalEntry</dt>
+  <dd>Entité métier représentant une entrée du journal d'audit. Contient acteur, action, cible, payload, raison, horodatage UTC.</dd>
+
+  <dt>Feature flag</dt>
+  <dd>Drapeau logiciel permettant d'activer ou de désactiver un module entier sans toucher au code. Sert à commercialiser Broccers par modules ou à dévoiler progressivement des fonctionnalités en bêta.</dd>
+
+  <dt>ESP32-S3 Sense</dt>
+  <dd>Module embarqué Seeed Studio XIAO ESP32-S3 Sense avec capteur photo OV2640, microphone PDM, Wi-Fi, Bluetooth, microSD. Utilisé dans la Phase H pour les caméras IA distribuées.</dd>
+
+  <dt>Whisper</dt>
+  <dd>Modèle de reconnaissance vocale (speech-to-text) open-source d'OpenAI, hébergé localement sur la machine Titan du cluster Stowy. Utilisé en option pour la transcription des commandes dictées.</dd>
+
+  <dt>Claude Max</dt>
+  <dd>Abonnement Anthropic donnant accès aux modèles Claude via le CLI <code>claude -p</code>. Permet d'utiliser Claude sans manipuler de clé API ni payer à l'usage.</dd>
+
+  <dt>QR secret</dt>
+  <dd>Identifiant à 16 caractères généré aléatoirement, associé à une table de restaurant. Combiné à l'ID de la table, forme l'URL unique <code>/menu/&lt;tableId&gt;/&lt;secret&gt;</code> accessible sans authentification. Régénérable pour invalider les anciens QR.</dd>
+</dl>
+
+<div style="text-align:center; margin-top: 60px; padding-top: 30px; border-top: 1px solid var(--soft); color: var(--muted); font-size: 0.85rem;">
+  Document de spécifications fonctionnelles Broccers v0.7.0 — édité le 2026-06-01 par Stowy Agency.<br>
+  <em>SG Framework · Tailscale only · zero cloud public · privacy by design</em>
+</div>
+
+</main>
+</div>
+
+</body>
+</html>

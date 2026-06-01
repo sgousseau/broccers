@@ -98,6 +98,9 @@ class BrApiRouter {
     r.get('/docs/schema.html', _serveDocsSchema);
     r.get('/docs/presentation', _serveDocsPresentation);
     r.get('/docs/presentation.html', _serveDocsPresentation);
+    r.get('/docs/specifications', _serveDocsSpecifications);
+    r.get('/docs/specifications.html', _serveDocsSpecifications);
+    r.get('/docs/spec', _serveDocsSpecifications);
     r.get('/', _serveDocsIndex);
 
     r.get('/api/employees', _withAuth(_listEmployees));
@@ -661,6 +664,7 @@ class BrApiRouter {
   Future<Response> _serveDocsProduct(Request req) => _serveDocFile('docs/product.html');
   Future<Response> _serveDocsSchema(Request req) => _serveDocFile('docs/schema.html');
   Future<Response> _serveDocsPresentation(Request req) => _serveDocFile('docs/presentation.html');
+  Future<Response> _serveDocsSpecifications(Request req) => _serveDocFile('docs/specifications.html');
 
   Future<Response> _serveDocsIndex(Request req) async {
     return Response.ok(
@@ -677,6 +681,7 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
 <p class="lead">Serveur Broccers — Puces du Canal, Villeurbanne</p>
 <p><strong style="color:#f5c842">App PWA :</strong> <a href="http://127.0.0.1:8766">http://127.0.0.1:8766</a> (Flutter Web)</p>
 <p><strong style="color:#f5c842">📖 Présentation fonctionnelle (pour les nuls) :</strong> <a href="/docs/presentation">/docs/presentation</a></p>
+<p><strong style="color:#f5c842">📚 Spécifications exhaustives (table des matières) :</strong> <a href="/docs/specifications">/docs/specifications</a></p>
 <p><strong style="color:#f5c842">Documentation produit complète :</strong> <a href="/docs/product">/docs/product</a></p>
 <p><strong style="color:#f5c842">Schéma visuel :</strong> <a href="/docs/schema">/docs/schema</a></p>
 <p><strong style="color:#f5c842">API Health :</strong> <a href="/api/health">/api/health</a></p>
