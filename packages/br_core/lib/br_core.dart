@@ -46,6 +46,12 @@ export 'src/entities/sg_kitchen_ticket.dart';
 export 'src/entities/sg_recipe.dart';
 export 'src/entities/sg_cooking_task.dart';
 
+// === Entities — Phase F (settings + ingredients + waste + tables) ===
+export 'src/entities/sg_setting.dart';
+export 'src/entities/sg_ingredient.dart';
+export 'src/entities/sg_food_waste.dart';
+export 'src/entities/sg_table.dart';
+
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
 export 'src/ports/sg_pdf_renderer_port.dart';
@@ -77,3 +83,4 @@ export 'src/usecases/check_onboarding_item_usecase.dart';
 export 'src/usecases/parse_voice_order_usecase.dart';
 export 'src/usecases/send_ticket_to_kitchen_usecase.dart';
 export 'src/usecases/cooking_task_lifecycle_usecase.dart';
+export 'src/usecases/phase_f_usecases.dart';

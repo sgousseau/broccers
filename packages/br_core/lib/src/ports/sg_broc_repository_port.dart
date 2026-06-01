@@ -2,7 +2,9 @@ import '../entities/sg_break.dart';
 import '../entities/sg_cooking_task.dart';
 import '../entities/sg_employee.dart';
 import '../entities/sg_event_journal_entry.dart';
+import '../entities/sg_food_waste.dart';
 import '../entities/sg_hourly_rate.dart';
+import '../entities/sg_ingredient.dart';
 import '../entities/sg_kiosk_session.dart';
 import '../entities/sg_kitchen_ticket.dart';
 import '../entities/sg_menu_card.dart';
@@ -10,12 +12,14 @@ import '../entities/sg_onboarding_checklist.dart';
 import '../entities/sg_pdf_export.dart';
 import '../entities/sg_question.dart';
 import '../entities/sg_recipe.dart';
+import '../entities/sg_setting.dart';
 import '../entities/sg_shift.dart';
 import '../entities/sg_shift_segment.dart';
 import '../entities/sg_shopping_item.dart';
 import '../entities/sg_shopping_list.dart';
 import '../entities/sg_staff_consumption.dart';
 import '../entities/sg_supplier.dart';
+import '../entities/sg_table.dart';
 import '../failures.dart';
 import '../result.dart';
 
@@ -149,4 +153,37 @@ abstract interface class SgBrocRepositoryPort {
     DateTime? from,
     DateTime? to,
   });
+
+  // ============== Settings (Phase F) ==============
+  Future<Result<SgSetting?, SgFailure>> getSetting(String key);
+  Future<Result<void, SgFailure>> setSetting(SgSetting setting);
+  Future<Result<List<SgSetting>, SgFailure>> listSettings({SgSettingCategory? category});
+
+  // ============== Ingredients (Phase F) ==============
+  Future<Result<SgIngredient, SgFailure>> createIngredient(SgIngredient i);
+  Future<Result<SgIngredient, SgFailure>> updateIngredient(SgIngredient i);
+  Future<Result<SgIngredient?, SgFailure>> getIngredient(String id);
+  Future<Result<List<SgIngredient>, SgFailure>> listIngredients();
+
+  // ============== Recipe ingredients (Phase F — composition) ==============
+  Future<Result<SgRecipeIngredient, SgFailure>> createRecipeIngredient(SgRecipeIngredient ri);
+  Future<Result<SgRecipeIngredient, SgFailure>> updateRecipeIngredient(SgRecipeIngredient ri);
+  Future<Result<void, SgFailure>> deleteRecipeIngredient(String id);
+  Future<Result<List<SgRecipeIngredient>, SgFailure>> listRecipeIngredients(String recipeId);
+
+  // ============== Food waste (Phase F) ==============
+  Future<Result<SgFoodWaste, SgFailure>> createFoodWaste(SgFoodWaste w);
+  Future<Result<List<SgFoodWaste>, SgFailure>> listFoodWaste({
+    DateTime? from,
+    DateTime? to,
+    SgWasteReason? reason,
+    String? reportedBy,
+  });
+
+  // ============== Tables (Phase F — QR codes) ==============
+  Future<Result<SgTable, SgFailure>> createTable(SgTable t);
+  Future<Result<SgTable, SgFailure>> updateTable(SgTable t);
+  Future<Result<SgTable?, SgFailure>> getTable(String id);
+  Future<Result<SgTable?, SgFailure>> getTableByIdAndSecret(String id, String secret);
+  Future<Result<List<SgTable>, SgFailure>> listTables({bool activeOnly = true});
 }

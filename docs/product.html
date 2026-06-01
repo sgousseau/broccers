@@ -177,6 +177,7 @@
   .phase-B { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
   .phase-D { background: rgba(245, 200, 66, 0.2); color: var(--broc-yellow); border: 1px solid var(--broc-yellow); }
   .phase-E { background: rgba(199, 34, 38, 0.2); color: #fca5a5; border: 1px solid var(--broc-red); }
+  .phase-F { background: rgba(99, 102, 241, 0.2); color: #a5b4fc; border: 1px solid #6366f1; }
 
   .philo {
     background: linear-gradient(135deg, rgba(199, 34, 38, 0.12), rgba(245, 200, 66, 0.08));
@@ -251,7 +252,7 @@
 <!-- ============= FEATURES ============= -->
 <section id="features" class="wrap">
   <h2><span class="num">02</span> Features livrées</h2>
-  <p class="lead">7 onglets UI couvrant tout le cycle d'exploitation d'une brasserie : personnel & paie · cuisine vocale · carte imprimable · courses · IA · audit · coûts.</p>
+  <p class="lead">10 onglets UI couvrant tout le cycle d'exploitation d'une brasserie : personnel & paie · cuisine vocale · carte imprimable · courses · IA · audit · coûts · pertes · tables QR · paramètres.</p>
 
   <div class="grid grid-2">
     <div class="card">
@@ -284,19 +285,47 @@
       <h3>🍳 Recettes / Étapes / Cuissons</h3>
       <p><code>SgRecipe</code> par menu item avec <code>SgRecipeStep</code> (type : prep/cooking/plating/rest, durée attendue). Au send-to-kitchen, <code>SgCookingTask</code> auto-créées. Cuisine clique Démarrer → timer. ⚠ DÉPASSÉ en rouge si overdue.</p>
     </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-F">PHASE F</span> · pilotage économique</div>
+      <h3>⚙️ Paramètres évolutifs (manager-only)</h3>
+      <p>Seuils marge brute ROUGE/JAUNE évolutifs (par défaut 60/70 — ajustables selon conjoncture), profil <em>low_cost/standard/premium</em>, taux de charges FR (66 % par défaut — taxes/charges sociales), seuil d'alerte gaspillage hebdo, configs commande vocale. Toute modification est audit-loggée (<code>setting.changed</code> dans event journal).</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-F">PHASE F</span> · composition</div>
+      <h3>📦 Ingrédients + Recettes + Marges</h3>
+      <p><code>SgIngredient</code> (nom, unité, prix moyen courant, fournisseur). <code>SgRecipeIngredient</code> lie une recette à ses ingrédients avec quantités. <code>ComputeMenuItemCostUseCase</code> calcule coût matière + marge en temps réel. Code couleur ROUGE/JAUNE/VERT selon les seuils paramétrables. Substitution d'ingrédient (livraison non conforme) avec recalcul automatique de marge et tag <code>[SUB]</code>.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-F">PHASE F</span> · pertes</div>
+      <h3>🗑️ Tracker gaspillage (observability bienveillante)</h3>
+      <p><code>SgFoodWaste</code> : kind (ingredient/menuItem), quantité, raison (prepLoss · servingLoss · expiry · unusedProduction · staffMeal · customerReturn · burnt · contamination · other), valeur estimée. Auto-évaluation du coût si l'ingrédient est référencé. Vue récap 7j : total €, breakdown par raison + par jour. <strong>Le journal sert à comprendre et améliorer, jamais réprimander.</strong></p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-F">PHASE F</span> · disponibilité</div>
+      <h3>🚫 Mode 86 / Rupture item</h3>
+      <p>Toggle inline depuis l'onglet Carte : « plus de saumon, livraison demain ». La raison est enregistrée. La carte publique consultable au QR se met à jour automatiquement (item barré et tagué EN RUPTURE). L'audit log conserve <code>menu_item.unavailable</code>.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-F">PHASE F</span> · client-facing</div>
+      <h3>📱 QR codes tables (consultation carte)</h3>
+      <p><code>SgTable</code> par table avec <code>qrSecret</code> unique. Endpoint <code>GET /menu/&lt;tableId&gt;/&lt;secret&gt;</code> sert la carte publiée en HTML responsive aux couleurs Broc — sans auth, lecture seule. Régénération du secret possible pour invalider l'ancien QR. L'écran Tables permet de créer/désactiver/imprimer.</p>
+    </div>
   </div>
 
-  <h3>Les 7 onglets UI</h3>
+  <h3>Les 10 onglets UI</h3>
   <table>
     <thead><tr><th>Onglet</th><th>Contenu</th><th>Actions</th></tr></thead>
     <tbody>
       <tr><td>👥 Personnel</td><td>Liste employés, badges EN SERVICE/PAUSE/OFF, planning hebdo, journal</td><td>Clock-in/out · Pause · Change-role mid-shift · Onboarding · Archive</td></tr>
       <tr><td>🍴 Cuisine</td><td>Kanban tickets (drafts/cuisine en cours/prêt à servir) + tâches cuisine</td><td>Nouvelle commande vocale (FAB) · Statut item · Start/Complete task</td></tr>
-      <tr><td>📖 Carte</td><td>Liste cartes versionnées, brouillons et publiées</td><td>Créer sample · Publier · Exporter PDF A4</td></tr>
+      <tr><td>📖 Carte</td><td>Liste cartes versionnées, brouillons et publiées + bouton Mode 86</td><td>Créer sample · Publier · Exporter PDF A4 · Toggle dispo item</td></tr>
       <tr><td>🛒 Courses</td><td>Listes + items checklist par fournisseur</td><td>Créer liste · Ajouter item (urgent) · Check/uncheck</td></tr>
       <tr><td>🧠 Question</td><td>Chat Claude avec contexte Broc (carte + courses)</td><td>Poser une question · Historique</td></tr>
       <tr><td>📋 Journal</td><td>Audit log filtrable par actor / action</td><td>Filtres date/acteur/type · Refresh</td></tr>
       <tr><td>💶 Coûts</td><td>Taux horaires + conso staff + pourboires + heatmap 7j</td><td>Définir taux · Enregistrer conso · Set tip · Voir activité</td></tr>
+      <tr><td>🗑️ Pertes</td><td><strong>NEW</strong> · Total 7j + breakdown par raison + par jour + historique</td><td>Déclarer une perte (FAB) · Auto-estimation valeur si ingrédient connu</td></tr>
+      <tr><td>📱 Tables</td><td><strong>NEW</strong> · Liste tables avec QR codes uniques pour clients</td><td>Créer table · Afficher QR · Régénérer secret · Désactiver</td></tr>
+      <tr><td>⚙️ Paramètres</td><td><strong>NEW</strong> · Manager-only · Seuils marges / pauses légales / charges / vocal</td><td>Éditer paramètre (audit-loggé) · Reset par défaut · Filtrer par catégorie</td></tr>
     </tbody>
   </table>
 </section>

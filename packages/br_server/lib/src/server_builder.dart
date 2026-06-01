@@ -173,6 +173,32 @@ class BrServerBuilder {
       eventIdGenerator: () => 'evt-${genId()}',
     );
 
+    // === Phase F use cases ===
+    final setSetting = SetSettingUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final computeCost = ComputeMenuItemCostUseCase(repository: repo);
+    final declareWaste = DeclareFoodWasteUseCase(
+      repository: repo,
+      clock: clock,
+      idGenerator: () => genId(),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final toggleAvail = ToggleMenuItemAvailabilityUseCase(
+      repository: repo,
+      clock: clock,
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+    final createTable = CreateTableUseCase(
+      repository: repo,
+      clock: clock,
+      idGenerator: () => genId(),
+      secretGenerator: () => genId().replaceAll('-', '').substring(0, 16),
+      eventIdGenerator: () => 'evt-${genId()}',
+    );
+
     final commands = BrCommandRegistry(
       config: config,
       repository: repo,
@@ -222,6 +248,12 @@ class BrServerBuilder {
       addShoppingItem: addShoppingItem,
       checkShoppingItem: checkShoppingItem,
       askQuestion: askQuestion,
+      setSetting: setSetting,
+      computeCost: computeCost,
+      declareWaste: declareWaste,
+      toggleAvail: toggleAvail,
+      createTable: createTable,
+      idGenerator: () => genId(),
     );
 
     final pipeline = const Pipeline()

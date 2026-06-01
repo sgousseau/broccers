@@ -13,6 +13,7 @@ class SgMenuItem {
   final bool available;
   final Set<SgAllergen> allergens;
   final int sortOrder;
+  final String? unavailableReason;
 
   const SgMenuItem({
     required this.id,
@@ -24,6 +25,7 @@ class SgMenuItem {
     required this.allergens,
     required this.sortOrder,
     this.description,
+    this.unavailableReason,
   });
 
   /// Prix formaté en euros : `12,50 €` (locale FR).
@@ -45,6 +47,7 @@ class SgMenuItem {
     bool? available,
     Set<SgAllergen>? allergens,
     int? sortOrder,
+    String? unavailableReason,
   }) =>
       SgMenuItem(
         id: id ?? this.id,
@@ -56,6 +59,7 @@ class SgMenuItem {
         available: available ?? this.available,
         allergens: allergens ?? this.allergens,
         sortOrder: sortOrder ?? this.sortOrder,
+        unavailableReason: unavailableReason ?? this.unavailableReason,
       );
 
   Map<String, dynamic> toJson() => {
@@ -66,6 +70,7 @@ class SgMenuItem {
         if (description != null) 'description': description,
         'price_cents': priceCents,
         'available': available,
+        if (unavailableReason != null) 'unavailable_reason': unavailableReason,
         'allergens': allergens.map((a) => a.name).toList(),
         'sort_order': sortOrder,
       };
@@ -78,6 +83,7 @@ class SgMenuItem {
         description: json['description'] as String?,
         priceCents: json['price_cents'] as int,
         available: json['available'] as bool? ?? true,
+        unavailableReason: json['unavailable_reason'] as String?,
         allergens: ((json['allergens'] as List<dynamic>?) ?? const [])
             .map((a) =>
                 SgAllergen.values.firstWhere((al) => al.name == a as String))

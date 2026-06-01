@@ -280,6 +280,80 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
     db.execute('CREATE INDEX IF NOT EXISTS idx_cooking_tasks_item ON cooking_tasks(ticket_item_id, sort_order);');
     db.execute('CREATE INDEX IF NOT EXISTS idx_cooking_tasks_status ON cooking_tasks(status, started_at);');
 
+    // === Phase F — Settings + Ingredients + RecipeIngredients + Food Waste + Tables ===
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        type TEXT NOT NULL,
+        set_at TEXT NOT NULL,
+        set_by TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS ingredients (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        current_price_cents INTEGER NOT NULL,
+        supplier_id TEXT REFERENCES suppliers(id) ON DELETE SET NULL,
+        notes TEXT,
+        updated_at TEXT NOT NULL
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS recipe_ingredients (
+        id TEXT PRIMARY KEY,
+        recipe_id TEXT NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+        ingredient_id TEXT NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+        quantity REAL NOT NULL,
+        unit TEXT NOT NULL,
+        notes TEXT,
+        is_substitution INTEGER NOT NULL DEFAULT 0,
+        substitution_reason TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS food_waste (
+        id TEXT PRIMARY KEY,
+        kind TEXT NOT NULL,
+        ref_id TEXT NOT NULL,
+        label TEXT NOT NULL,
+        quantity REAL NOT NULL,
+        unit TEXT,
+        reason TEXT NOT NULL,
+        estimated_value_cents INTEGER NOT NULL DEFAULT 0,
+        reported_by TEXT NOT NULL,
+        reported_at TEXT NOT NULL,
+        notes TEXT
+      );
+    ''');
+    db.execute('''
+      CREATE TABLE IF NOT EXISTS broc_tables (
+        id TEXT PRIMARY KEY,
+        label TEXT NOT NULL,
+        capacity INTEGER,
+        qr_secret TEXT NOT NULL,
+        position TEXT,
+        active INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL,
+        secret_rotated_at TEXT
+      );
+    ''');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_ingredients_name ON ingredients(name);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients(recipe_id);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_food_waste_date ON food_waste(reported_at DESC);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_food_waste_reason ON food_waste(reason);');
+    db.execute('CREATE INDEX IF NOT EXISTS idx_tables_active ON broc_tables(active);');
+
+    final menuItemCols = db
+        .select('PRAGMA table_info(menu_items)')
+        .map((r) => r['name'] as String)
+        .toSet();
+    if (!menuItemCols.contains('unavailable_reason')) {
+      db.execute('ALTER TABLE menu_items ADD COLUMN unavailable_reason TEXT');
+    }
+
     // === Phase A migrations from v0.1 → v0.2 (idempotent) ===
     final empCols = db
         .select('PRAGMA table_info(employees)')
@@ -626,8 +700,8 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
           }
           for (final it in card.items) {
             _db.execute(
-              'INSERT INTO menu_items(id, card_id, category_id, name, description, price_cents, available, allergens_json, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-              [it.id, it.cardId, it.categoryId, it.name, it.description, it.priceCents, it.available ? 1 : 0, jsonEncode(it.allergens.map((a) => a.name).toList()), it.sortOrder],
+              'INSERT INTO menu_items(id, card_id, category_id, name, description, price_cents, available, allergens_json, sort_order, unavailable_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+              [it.id, it.cardId, it.categoryId, it.name, it.description, it.priceCents, it.available ? 1 : 0, jsonEncode(it.allergens.map((a) => a.name).toList()), it.sortOrder, it.unavailableReason],
             );
           }
           _db.execute('COMMIT');
@@ -640,10 +714,32 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
 
   @override
   Future<Result<SgMenuCard, SgFailure>> updateMenuCard(SgMenuCard card) async => _wrap(() {
-        _db.execute(
-          'UPDATE menu_cards SET name = ?, version = ?, published_at = ? WHERE id = ?',
-          [card.name, card.version, card.publishedAt?.toIso8601String(), card.id],
-        );
+        _db.execute('BEGIN');
+        try {
+          _db.execute(
+            'UPDATE menu_cards SET name = ?, version = ?, published_at = ? WHERE id = ?',
+            [card.name, card.version, card.publishedAt?.toIso8601String(), card.id],
+          );
+          for (final it in card.items) {
+            _db.execute(
+              'UPDATE menu_items SET name = ?, description = ?, price_cents = ?, available = ?, allergens_json = ?, sort_order = ?, unavailable_reason = ? WHERE id = ?',
+              [
+                it.name,
+                it.description,
+                it.priceCents,
+                it.available ? 1 : 0,
+                jsonEncode(it.allergens.map((a) => a.name).toList()),
+                it.sortOrder,
+                it.unavailableReason,
+                it.id,
+              ],
+            );
+          }
+          _db.execute('COMMIT');
+        } catch (e) {
+          _db.execute('ROLLBACK');
+          rethrow;
+        }
         return card;
       });
 
@@ -707,6 +803,7 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         available: (i['available'] as int) == 1,
         allergens: allergensList,
         sortOrder: i['sort_order'] as int,
+        unavailableReason: i['unavailable_reason'] as String?,
       );
     }).toList();
     return SgMenuCard(
@@ -1568,6 +1665,255 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         expectedDuration: Duration(milliseconds: r['expected_duration_ms'] as int),
         assignedTo: r['assigned_to'] as String?,
         sortOrder: r['sort_order'] as int? ?? 0,
+      );
+
+  // ============== Phase F — Settings ==============
+  @override
+  Future<Result<SgSetting?, SgFailure>> getSetting(String key) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM settings WHERE key = ?', [key]);
+        if (rs.isEmpty) return null;
+        return _rowToSetting(rs.first);
+      });
+
+  @override
+  Future<Result<void, SgFailure>> setSetting(SgSetting s) async => _wrap(() {
+        _db.execute(
+          'INSERT OR REPLACE INTO settings(key, value, type, set_at, set_by) VALUES (?, ?, ?, ?, ?)',
+          [s.key, jsonEncode(s.value), s.type.name, s.setAt.toIso8601String(), s.setBy],
+        );
+      });
+
+  @override
+  Future<Result<List<SgSetting>, SgFailure>> listSettings({SgSettingCategory? category}) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM settings ORDER BY key');
+        final settings = rs.map(_rowToSetting).toList();
+        if (category == null) return settings;
+        return settings.where((s) {
+          final def = SgBrocSettingsRegistry.find(s.key);
+          return def?.category == category;
+        }).toList();
+      });
+
+  SgSetting _rowToSetting(Row r) {
+    final type = SgSettingType.values.firstWhere((t) => t.name == r['type']);
+    final raw = r['value'] as String;
+    Object value;
+    try {
+      value = jsonDecode(raw) as Object;
+    } catch (_) {
+      value = raw;
+    }
+    return SgSetting(
+      key: r['key'] as String,
+      value: value,
+      type: type,
+      setAt: DateTime.parse(r['set_at'] as String),
+      setBy: r['set_by'] as String,
+    );
+  }
+
+  // ============== Phase F — Ingredients ==============
+  @override
+  Future<Result<SgIngredient, SgFailure>> createIngredient(SgIngredient i) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO ingredients(id, name, unit, current_price_cents, supplier_id, notes, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [i.id, i.name, i.unit.name, i.currentPriceCents, i.supplierId, i.notes, i.updatedAt.toIso8601String()],
+        );
+        return i;
+      });
+
+  @override
+  Future<Result<SgIngredient, SgFailure>> updateIngredient(SgIngredient i) async => _wrap(() {
+        _db.execute(
+          'UPDATE ingredients SET name = ?, unit = ?, current_price_cents = ?, supplier_id = ?, notes = ?, updated_at = ? WHERE id = ?',
+          [i.name, i.unit.name, i.currentPriceCents, i.supplierId, i.notes, i.updatedAt.toIso8601String(), i.id],
+        );
+        return i;
+      });
+
+  @override
+  Future<Result<SgIngredient?, SgFailure>> getIngredient(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM ingredients WHERE id = ?', [id]);
+        return rs.isEmpty ? null : _rowToIngredient(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgIngredient>, SgFailure>> listIngredients() async => _wrap(() {
+        return _db.select('SELECT * FROM ingredients ORDER BY name').map(_rowToIngredient).toList();
+      });
+
+  SgIngredient _rowToIngredient(Row r) => SgIngredient(
+        id: r['id'] as String,
+        name: r['name'] as String,
+        unit: SgIngredientUnit.fromName(r['unit'] as String),
+        currentPriceCents: r['current_price_cents'] as int,
+        supplierId: r['supplier_id'] as String?,
+        notes: r['notes'] as String?,
+        updatedAt: DateTime.parse(r['updated_at'] as String),
+      );
+
+  // ============== Phase F — Recipe ingredients ==============
+  @override
+  Future<Result<SgRecipeIngredient, SgFailure>> createRecipeIngredient(SgRecipeIngredient ri) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO recipe_ingredients(id, recipe_id, ingredient_id, quantity, unit, notes, is_substitution, substitution_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [ri.id, ri.recipeId, ri.ingredientId, ri.quantity, ri.unit.name, ri.notes, ri.isSubstitution ? 1 : 0, ri.substitutionReason],
+        );
+        return ri;
+      });
+
+  @override
+  Future<Result<SgRecipeIngredient, SgFailure>> updateRecipeIngredient(SgRecipeIngredient ri) async => _wrap(() {
+        _db.execute(
+          'UPDATE recipe_ingredients SET ingredient_id = ?, quantity = ?, unit = ?, notes = ?, is_substitution = ?, substitution_reason = ? WHERE id = ?',
+          [ri.ingredientId, ri.quantity, ri.unit.name, ri.notes, ri.isSubstitution ? 1 : 0, ri.substitutionReason, ri.id],
+        );
+        return ri;
+      });
+
+  @override
+  Future<Result<void, SgFailure>> deleteRecipeIngredient(String id) async => _wrap(() {
+        _db.execute('DELETE FROM recipe_ingredients WHERE id = ?', [id]);
+      });
+
+  @override
+  Future<Result<List<SgRecipeIngredient>, SgFailure>> listRecipeIngredients(String recipeId) async => _wrap(() {
+        return _db.select(
+          'SELECT * FROM recipe_ingredients WHERE recipe_id = ?',
+          [recipeId],
+        ).map(_rowToRecipeIngredient).toList();
+      });
+
+  SgRecipeIngredient _rowToRecipeIngredient(Row r) => SgRecipeIngredient(
+        id: r['id'] as String,
+        recipeId: r['recipe_id'] as String,
+        ingredientId: r['ingredient_id'] as String,
+        quantity: (r['quantity'] as num).toDouble(),
+        unit: SgIngredientUnit.fromName(r['unit'] as String),
+        notes: r['notes'] as String?,
+        isSubstitution: (r['is_substitution'] as int) == 1,
+        substitutionReason: r['substitution_reason'] as String?,
+      );
+
+  // ============== Phase F — Food waste ==============
+  @override
+  Future<Result<SgFoodWaste, SgFailure>> createFoodWaste(SgFoodWaste w) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO food_waste(id, kind, ref_id, label, quantity, unit, reason, estimated_value_cents, reported_by, reported_at, notes) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [
+            w.id,
+            w.kind.name,
+            w.refId,
+            w.label,
+            w.quantity,
+            w.unit?.name,
+            w.reason.name,
+            w.estimatedValueCents,
+            w.reportedBy,
+            w.reportedAt.toIso8601String(),
+            w.notes,
+          ],
+        );
+        return w;
+      });
+
+  @override
+  Future<Result<List<SgFoodWaste>, SgFailure>> listFoodWaste({
+    DateTime? from,
+    DateTime? to,
+    SgWasteReason? reason,
+    String? reportedBy,
+  }) async =>
+      _wrap(() {
+        var sql = 'SELECT * FROM food_waste WHERE 1=1';
+        final params = <Object>[];
+        if (from != null) {
+          sql += ' AND reported_at >= ?';
+          params.add(from.toIso8601String());
+        }
+        if (to != null) {
+          sql += ' AND reported_at <= ?';
+          params.add(to.toIso8601String());
+        }
+        if (reason != null) {
+          sql += ' AND reason = ?';
+          params.add(reason.name);
+        }
+        if (reportedBy != null) {
+          sql += ' AND reported_by = ?';
+          params.add(reportedBy);
+        }
+        sql += ' ORDER BY reported_at DESC LIMIT 500';
+        return _db.select(sql, params).map((r) => SgFoodWaste(
+              id: r['id'] as String,
+              kind: SgWasteKind.values.firstWhere((k) => k.name == r['kind']),
+              refId: r['ref_id'] as String,
+              label: r['label'] as String,
+              quantity: (r['quantity'] as num).toDouble(),
+              unit: r['unit'] != null
+                  ? SgIngredientUnit.fromName(r['unit'] as String)
+                  : null,
+              reason: SgWasteReason.fromName(r['reason'] as String),
+              estimatedValueCents: r['estimated_value_cents'] as int,
+              reportedBy: r['reported_by'] as String,
+              reportedAt: DateTime.parse(r['reported_at'] as String),
+              notes: r['notes'] as String?,
+            )).toList();
+      });
+
+  // ============== Phase F — Tables ==============
+  @override
+  Future<Result<SgTable, SgFailure>> createTable(SgTable t) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO broc_tables(id, label, capacity, qr_secret, position, active, created_at, secret_rotated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          [t.id, t.label, t.capacity, t.qrSecret, t.position, t.active ? 1 : 0, t.createdAt.toIso8601String(), t.secretRotatedAt?.toIso8601String()],
+        );
+        return t;
+      });
+
+  @override
+  Future<Result<SgTable, SgFailure>> updateTable(SgTable t) async => _wrap(() {
+        _db.execute(
+          'UPDATE broc_tables SET label = ?, capacity = ?, qr_secret = ?, position = ?, active = ?, secret_rotated_at = ? WHERE id = ?',
+          [t.label, t.capacity, t.qrSecret, t.position, t.active ? 1 : 0, t.secretRotatedAt?.toIso8601String(), t.id],
+        );
+        return t;
+      });
+
+  @override
+  Future<Result<SgTable?, SgFailure>> getTable(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM broc_tables WHERE id = ?', [id]);
+        return rs.isEmpty ? null : _rowToTable(rs.first);
+      });
+
+  @override
+  Future<Result<SgTable?, SgFailure>> getTableByIdAndSecret(String id, String secret) async => _wrap(() {
+        final rs = _db.select(
+          'SELECT * FROM broc_tables WHERE id = ? AND qr_secret = ? AND active = 1',
+          [id, secret],
+        );
+        return rs.isEmpty ? null : _rowToTable(rs.first);
+      });
+
+  @override
+  Future<Result<List<SgTable>, SgFailure>> listTables({bool activeOnly = true}) async => _wrap(() {
+        final rs = activeOnly
+            ? _db.select('SELECT * FROM broc_tables WHERE active = 1 ORDER BY label')
+            : _db.select('SELECT * FROM broc_tables ORDER BY label');
+        return rs.map(_rowToTable).toList();
+      });
+
+  SgTable _rowToTable(Row r) => SgTable(
+        id: r['id'] as String,
+        label: r['label'] as String,
+        capacity: r['capacity'] as int?,
+        qrSecret: r['qr_secret'] as String,
+        position: r['position'] as String?,
+        active: (r['active'] as int) == 1,
+        createdAt: DateTime.parse(r['created_at'] as String),
+        secretRotatedAt: r['secret_rotated_at'] != null
+            ? DateTime.parse(r['secret_rotated_at'] as String)
+            : null,
       );
 
   void close() => _db.dispose();

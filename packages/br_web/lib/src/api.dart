@@ -55,6 +55,15 @@ class BrWebApi {
   ) =>
       _req('POST', path, body);
 
+  Future<Result<Map<String, dynamic>, SgFailure>> put(
+    String path,
+    Map<String, dynamic>? body,
+  ) =>
+      _req('PUT', path, body);
+
+  Future<Result<Map<String, dynamic>, SgFailure>> delete(String path) =>
+      _req('DELETE', path, null);
+
   /// Exécute une commande TestControlServer (sans auth car pas requis).
   Future<Result<Map<String, dynamic>, SgFailure>> command(String cmd) async {
     try {
@@ -86,6 +95,10 @@ class BrWebApi {
       final uri = baseUrl.resolve(path);
       if (method == 'GET') {
         resp = await _http.get(uri, headers: headers);
+      } else if (method == 'PUT') {
+        resp = await _http.put(uri, headers: headers, body: jsonEncode(body ?? {}));
+      } else if (method == 'DELETE') {
+        resp = await _http.delete(uri, headers: headers);
       } else {
         resp = await _http.post(uri, headers: headers, body: jsonEncode(body ?? {}));
       }

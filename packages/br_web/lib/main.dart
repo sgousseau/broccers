@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'src/api.dart';
 import 'src/br_sg.dart';
+import 'src/phase_f_screens.dart';
 
 const _apiBase = String.fromEnvironment(
   'BR_API_URL',
@@ -321,6 +322,9 @@ class _HomeShellState extends State<HomeShell> {
       QuestionScreen(api: widget.api),
       JournalScreen(api: widget.api),
       CostsScreen(api: widget.api),
+      WasteScreen(api: widget.api),
+      TablesScreen(api: widget.api),
+      SettingsScreen(api: widget.api),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -356,6 +360,9 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.psychology), label: 'Question'),
           NavigationDestination(icon: Icon(Icons.fact_check), label: 'Journal'),
           NavigationDestination(icon: Icon(Icons.euro), label: 'Coûts'),
+          NavigationDestination(icon: Icon(Icons.delete_outline), label: 'Pertes'),
+          NavigationDestination(icon: Icon(Icons.qr_code), label: 'Tables'),
+          NavigationDestination(icon: Icon(Icons.admin_panel_settings), label: 'Paramètres'),
         ],
       ),
     );
@@ -1230,6 +1237,134 @@ class _MenuScreenState extends State<MenuScreen> {
     ));
   }
 
+  Future<void> _openCardItemsForAvailability(String cardId) async {
+    final r = await widget.api.get('/api/menu/cards/current');
+    if (!mounted) return;
+    Map<String, dynamic>? card;
+    r.when(success: (data) => card = data, failure: (_) {});
+    if (card == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Aucune carte publiée pour gérer 86.'),
+        backgroundColor: BrocBrand.brocRed,
+      ));
+      return;
+    }
+    final items = ((card!['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: BrocBrand.brocBlack,
+      isScrollControlled: true,
+      builder: (_) {
+        return StatefulBuilder(builder: (ctx, setLocal) {
+          return DraggableScrollableSheet(
+            initialChildSize: 0.85,
+            expand: false,
+            builder: (_, ctrl) {
+              return ListView(
+                controller: ctrl,
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Row(children: [
+                    const Icon(Icons.no_food, color: BrocBrand.brocRed),
+                    const SizedBox(width: 8),
+                    Text('Mode 86 / Rupture — carte v${card!['version']}',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                  ]),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Désactive un plat quand un ingrédient manque. La carte publique se met à jour automatiquement.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const Divider(),
+                  for (final item in items)
+                    Card(
+                      color: BrocBrand.brocBlack.withValues(alpha: 0.6),
+                      child: SwitchListTile(
+                        title: Text(
+                          item['name'] as String,
+                          style: TextStyle(
+                            decoration: (item['available'] as bool? ?? true)
+                                ? null
+                                : TextDecoration.lineThrough,
+                            color: (item['available'] as bool? ?? true)
+                                ? null
+                                : Colors.grey,
+                          ),
+                        ),
+                        subtitle: item['unavailable_reason'] != null
+                            ? Text('Rupture : ${item['unavailable_reason']}',
+                                style: const TextStyle(color: BrocBrand.brocRed, fontSize: 11))
+                            : Text('${((item['price_cents'] as int) / 100).toStringAsFixed(2)} €',
+                                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                        value: item['available'] as bool? ?? true,
+                        activeThumbColor: BrocBrand.brocYellow,
+                        onChanged: (newVal) async {
+                          String? reason;
+                          if (!newVal) {
+                            final ctrl = TextEditingController();
+                            reason = await showDialog<String>(
+                              context: ctx,
+                              builder: (_) => AlertDialog(
+                                title: const Text('Pourquoi le mettre en rupture ?'),
+                                content: TextField(
+                                  controller: ctrl,
+                                  autofocus: true,
+                                  decoration: const InputDecoration(
+                                    hintText: 'ex: plus de saumon, livraison demain',
+                                    border: OutlineInputBorder(),
+                                  ),
+                                ),
+                                actions: [
+                                  TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Annuler')),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(context, ctrl.text.trim()),
+                                    style: FilledButton.styleFrom(backgroundColor: BrocBrand.brocRed),
+                                    child: const Text('Confirmer'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (reason == null) return;
+                          }
+                          final r = await widget.api.post(
+                            '/api/menu/items/${item['id']}/availability',
+                            {
+                              'available': newVal,
+                              if (reason != null) 'reason': reason,
+                              'actor': 'manager',
+                            },
+                          );
+                          if (!ctx.mounted) return;
+                          r.when(
+                            success: (data) {
+                              setLocal(() {
+                                item['available'] = newVal;
+                                item['unavailable_reason'] = reason;
+                              });
+                              ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                                content: Text(newVal
+                                    ? '${item['name']} disponible à nouveau'
+                                    : '${item['name']} en rupture'),
+                                backgroundColor: BrocBrand.brocRed,
+                              ));
+                            },
+                            failure: (e) => ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(
+                              content: Text(translateErrorFr(e.message)),
+                              backgroundColor: Colors.red.shade900,
+                            )),
+                          );
+                        },
+                      ),
+                    ),
+                ],
+              );
+            },
+          );
+        });
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1261,6 +1396,12 @@ class _MenuScreenState extends State<MenuScreen> {
                               tooltip: 'Publier',
                               icon: const Icon(Icons.publish, color: Colors.green),
                               onPressed: () => _publish(c['id'] as String),
+                            ),
+                          if (pub)
+                            IconButton(
+                              tooltip: 'Mode 86 / Rupture',
+                              icon: const Icon(Icons.no_food, color: BrocBrand.brocYellow),
+                              onPressed: () => _openCardItemsForAvailability(c['id'] as String),
                             ),
                           IconButton(
                             tooltip: 'PDF',
