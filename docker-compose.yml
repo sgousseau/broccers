@@ -1,0 +1,55 @@
+version: '3.8'
+
+# Broccers — orchestration Docker 2-services
+# Usage :
+#   1. cp .env.example .env  (puis éditer PIN_BCRYPT_HASH et JWT_SECRET)
+#   2. docker compose build
+#   3. docker compose up -d
+#   4. ouvrir http://localhost:8766
+#
+# Persistance des données : volume nommé broccers_data → /app/data dans le container
+# Les exports PDF sont stockés dans le même volume.
+
+services:
+
+  # === Backend Dart shelf ===
+  br_server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: broccers/br_server:latest
+    container_name: broccers_server
+    restart: unless-stopped
+    ports:
+      - "8444:8444"
+    environment:
+      BR_HOST: "0.0.0.0"
+      BR_PORT: "8444"
+      BR_DATA_DIR: "/app/data"
+      BR_DB_PATH: "/app/data/broc.db"
+      BR_PIN_BCRYPT_HASH: "${BR_PIN_BCRYPT_HASH}"
+      BR_JWT_SECRET: "${BR_JWT_SECRET}"
+      BR_CLAUDE_CLI_PATH: "${BR_CLAUDE_CLI_PATH:-/usr/local/bin/claude}"
+      BR_WHISPER_URL: "${BR_WHISPER_URL:-}"
+      DOCKER_CONTAINER: "1"
+      TZ: "Europe/Paris"
+    volumes:
+      - broccers_data:/app/data
+      - ./docs:/app/docs:ro  # docs montés en read-only pour rechargement live
+
+  # === Frontend Flutter Web (servi par nginx) ===
+  br_web:
+    image: nginx:alpine
+    container_name: broccers_web
+    restart: unless-stopped
+    ports:
+      - "8766:80"
+    volumes:
+      - ./dist/web:/usr/share/nginx/html:ro
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - br_server
+
+volumes:
+  broccers_data:
+    driver: local

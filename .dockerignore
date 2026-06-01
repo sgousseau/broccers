@@ -1,0 +1,48 @@
+# Dart build artifacts
+.dart_tool/
+build/
+.packages
+.pub-cache/
+
+# Flutter
+**/.flutter-plugins
+**/.flutter-plugins-dependencies
+**/build/
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local secrets / data
+.env
+.env.*
+*.db
+*.db-shm
+*.db-wal
+~/.broccers/
+
+# Docker artifacts
+docker-compose.override.yml
+dist/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+.github/
+
+# Logs
+*.log
+/tmp/
+
+# Test outputs
+coverage/
+test/coverage_helper_test.dart
+
+# Compiled binaries (we rebuild inside Docker)
+bin/br_server
