@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broccers — Table des feature flags</title>
+<style>
+  :root {
+    --broc-red: #c72226;
+    --broc-yellow: #f5c842;
+    --broc-cream: #f5ebd6;
+    --broc-black: #14100f;
+    --soft: #2a221e;
+    --grey: #b5a89a;
+    --muted: #7a6f63;
+    --green: #4ade80;
+    --orange: #fb923c;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+    --red: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; scroll-behavior: smooth; }
+  body {
+    background: var(--broc-black);
+    color: var(--broc-cream);
+    font-family: -apple-system, 'Segoe UI', sans-serif;
+    line-height: 1.55;
+  }
+  code {
+    background: var(--soft);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 0.85em;
+    color: var(--broc-yellow);
+  }
+  a { color: var(--broc-yellow); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    background: linear-gradient(135deg, var(--broc-red) 0%, #8a181b 100%);
+    padding: 50px 30px 40px;
+    text-align: center;
+  }
+  header.hero .brand {
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    font-size: 12px;
+    display: inline-block;
+    margin-bottom: 12px;
+  }
+  header.hero h1 {
+    font-size: 2.6rem;
+    margin: 0 0 8px;
+    font-weight: 900;
+    letter-spacing: -1px;
+  }
+  header.hero .sub {
+    color: rgba(255,255,255,0.85);
+    font-size: 1rem;
+    margin: 0;
+  }
+  header.hero .stats {
+    display: inline-flex;
+    gap: 24px;
+    margin-top: 18px;
+    padding: 10px 20px;
+    background: rgba(20, 16, 15, 0.4);
+    border-radius: 8px;
+  }
+  header.hero .stat {
+    text-align: center;
+  }
+  header.hero .stat .n {
+    font-size: 1.8rem;
+    font-weight: 900;
+    color: var(--broc-yellow);
+    display: block;
+    line-height: 1;
+  }
+  header.hero .stat .l {
+    font-size: 0.7rem;
+    color: rgba(255,255,255,0.7);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 4px;
+  }
+
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+  }
+
+  .intro {
+    background: rgba(245, 235, 214, 0.04);
+    border-left: 4px solid var(--broc-yellow);
+    padding: 20px 24px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 40px;
+  }
+  .intro h2 { margin: 0 0 10px; color: var(--broc-yellow); font-size: 1.2rem; }
+  .intro p { margin: 6px 0; color: var(--grey); font-size: 0.95rem; }
+  .intro strong { color: var(--broc-cream); }
+
+  .category-nav {
+    position: sticky;
+    top: 0;
+    background: var(--broc-black);
+    padding: 14px 0;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--soft);
+    z-index: 100;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .category-nav a {
+    padding: 6px 14px;
+    background: var(--soft);
+    border-radius: 16px;
+    font-size: 0.85rem;
+    color: var(--broc-cream);
+    border: 1px solid transparent;
+    transition: all 0.2s;
+  }
+  .category-nav a:hover {
+    border-color: var(--broc-yellow);
+    text-decoration: none;
+  }
+  .category-nav a .count {
+    color: var(--broc-yellow);
+    font-weight: 700;
+    margin-left: 4px;
+  }
+
+  section.category {
+    margin: 50px 0;
+  }
+  section.category > h2 {
+    font-size: 1.7rem;
+    color: var(--broc-yellow);
+    border-bottom: 3px solid var(--broc-red);
+    padding-bottom: 8px;
+    margin: 0 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section.category > h2 .pill {
+    display: inline-block;
+    padding: 3px 12px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  section.category > h2 .pill.modules { background: var(--blue); color: var(--broc-black); }
+  section.category > h2 .pill.experimental { background: var(--orange); color: var(--broc-black); }
+  section.category > h2 .pill.licensing { background: var(--purple); color: var(--broc-black); }
+  section.category > h2 .pill.security { background: var(--red); color: var(--broc-black); }
+  section.category > .desc {
+    color: var(--grey);
+    font-style: italic;
+    margin: 0 0 24px;
+  }
+
+  .flag {
+    background: rgba(245, 235, 214, 0.03);
+    border: 1px solid rgba(245, 235, 214, 0.08);
+    border-left: 4px solid var(--muted);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 10px 0;
+    display: grid;
+    grid-template-columns: 90px 1fr auto;
+    gap: 16px;
+    align-items: start;
+    transition: border-color 0.15s;
+  }
+  .flag:hover { border-color: rgba(245, 200, 66, 0.3); }
+  .flag.on { border-left-color: var(--green); }
+  .flag.off { border-left-color: var(--muted); opacity: 0.85; }
+
+  .flag .state {
+    text-align: center;
+    padding-top: 4px;
+  }
+  .flag .state .badge {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+  }
+  .flag.on .state .badge { background: var(--green); color: var(--broc-black); }
+  .flag.off .state .badge { background: var(--muted); color: var(--broc-cream); }
+  .flag .state .default-info {
+    font-size: 0.65rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .flag .body .key {
+    font-family: 'SF Mono', 'Menlo', monospace;
+    color: var(--broc-yellow);
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+  }
+  .flag .body .label {
+    color: var(--broc-cream);
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 4px;
+  }
+  .flag .body .description {
+    color: var(--grey);
+    font-size: 0.9rem;
+    margin: 4px 0;
+  }
+  .flag .body .deps {
+    margin-top: 8px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .flag .body .deps strong {
+    color: var(--broc-cream);
+  }
+  .flag .body .deps code {
+    background: rgba(96, 165, 250, 0.12);
+    color: var(--blue);
+  }
+
+  .flag .meta {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: flex-end;
+  }
+  .meta-tag {
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .meta-tag.phase-h { background: var(--orange); color: var(--broc-black); }
+  .meta-tag.phase-j { background: var(--blue); color: var(--broc-black); }
+  .meta-tag.phase-k { background: var(--purple); color: var(--broc-black); }
+  .meta-tag.super-admin { background: var(--purple); color: var(--broc-black); }
+  .meta-tag.restart { background: var(--red); color: var(--broc-black); }
+
+  /* === Scenarios === */
+  section.scenarios {
+    margin: 60px 0 30px;
+  }
+  section.scenarios h2 {
+    font-size: 1.7rem;
+    color: var(--broc-yellow);
+    border-bottom: 3px solid var(--broc-red);
+    padding-bottom: 8px;
+    margin: 0 0 24px;
+  }
+  .scenario {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 14px 0;
+    border-left: 4px solid var(--broc-yellow);
+  }
+  .scenario h3 {
+    margin: 0 0 6px;
+    color: var(--broc-yellow);
+    font-size: 1.1rem;
+  }
+  .scenario .target {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+  }
+  .scenario .on, .scenario .off {
+    margin: 6px 0;
+    font-size: 0.9rem;
+  }
+  .scenario .on strong { color: var(--green); }
+  .scenario .off strong { color: var(--red); }
+  .scenario code { font-size: 0.78rem; }
+
+  /* === Footer === */
+  footer {
+    margin-top: 60px;
+    padding: 30px 24px;
+    border-top: 1px solid var(--soft);
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    background: rgba(0,0,0,0.3);
+  }
+  footer .links {
+    margin-top: 12px;
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  footer .links a { color: var(--broc-yellow); }
+
+  @media (max-width: 720px) {
+    .flag {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .flag .state { text-align: left; padding-top: 0; }
+    .flag .meta { flex-direction: row; align-items: center; }
+    header.hero h1 { font-size: 1.8rem; }
+    header.hero .stats { gap: 14px; padding: 8px 14px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="brand">CAFÉ</div>
+  <h1>Table des feature flags</h1>
+  <p class="sub">30 leviers logiciels pour configurer Broccers selon le contexte commercial.</p>
+  <div class="stats">
+    <div class="stat"><span class="n">30</span><span class="l">Total</span></div>
+    <div class="stat"><span class="n">22</span><span class="l">ON défaut</span></div>
+    <div class="stat"><span class="n">8</span><span class="l">OFF défaut</span></div>
+    <div class="stat"><span class="n">4</span><span class="l">Catégories</span></div>
+  </div>
+</header>
+
+<div class="container">
+
+<div class="intro">
+  <h2>À quoi ça sert</h2>
+  <p>Un <strong>feature flag</strong> est un drapeau logiciel qui active ou désactive un module entier sans toucher au code. Il permet à un même binaire Broccers de tourner avec des fonctionnalités différentes chez deux clients différents.</p>
+  <p>Trois usages principaux : <strong>(1)</strong> commercialiser des modules indépendamment (un client achète le « pack Cuisine », un autre le « pack Personnel + Marges »), <strong>(2)</strong> dévoiler progressivement des phases en cours de développement (Phase H caméras IA reste OFF par défaut), <strong>(3)</strong> protéger les fonctionnalités stratégiques que tu veux garder en interne et ne pas céder à un client (paramètres avancés, multi-instance, branding).</p>
+  <p>Tous les flags sont éditables en live depuis l'onglet <strong>🛡️ Admin → Feature flags</strong> de l'application, ou via l'API <code>PUT /api/features/&lt;key&gt;</code>. Chaque modification est audit-loggée.</p>
+</div>
+
+<nav class="category-nav">
+  <a href="#modules">🟢 Modules métier <span class="count">20</span></a>
+  <a href="#experimental">🟠 Expérimental <span class="count">6</span></a>
+  <a href="#licensing">🟣 Licence &amp; commercial <span class="count">3</span></a>
+  <a href="#security">🔴 Sécurité <span class="count">1</span></a>
+  <a href="#scenarios">🎯 Scénarios commerciaux</a>
+</nav>
+
+<!-- ============================================================== -->
+<!-- MODULES MÉTIER                                                  -->
+<!-- ============================================================== -->
+<section class="category" id="modules">
+  <h2>Modules métier <span class="pill modules">Gating commercial</span></h2>
+  <p class="desc">Le cœur fonctionnel de Broccers. Active uniquement ce que le client a commandé.</p>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.personnel.tracking</div>
+      <div class="label">Personnel &amp; RH (pointage, planning, rôles)</div>
+      <div class="description">Gestion équipe, clock-in/out, multi-rôles, pauses légales Art. L. 3121-16.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.tips.tracking</div>
+      <div class="label">Suivi pourboires par shift</div>
+      <div class="description">Enregistrement et analyse des pourboires shift par shift.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.personnel.tracking</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.reports.heatmap</div>
+      <div class="label">Heatmap activité 7 jours</div>
+      <div class="description">Vue grille employé × jour avec intensité de couleur, identifie les déséquilibres de charge.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.personnel.tracking</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.personnel.onboarding</div>
+      <div class="label">Onboarding par rôle (HACCP-aware)</div>
+      <div class="description">Checklists générées par Claude adaptées au rôle (HACCP pour cuisinier, service pour serveur, etc.).</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.menu.editor</div>
+      <div class="label">Éditeur de cartes</div>
+      <div class="description">CRUD complet cartes, catégories, plats, allergènes INCO 14 obligatoires (UE 1169/2011).</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.menu.import_image</div>
+      <div class="label">Import carte depuis photo (Claude Vision)</div>
+      <div class="description">Extraction automatique catégories, plats, prix, allergènes via IA — gain de 30 min par carte.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.menu.editor</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.menu.pdf</div>
+      <div class="label">Export PDF A4 imprimable</div>
+      <div class="description">Génération PDF Dart natif aux couleurs Broc, design CAFÉ rouge/jaune/cream.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.menu.editor</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.menu.mode_86</div>
+      <div class="label">Mode 86 / Signalement rupture</div>
+      <div class="description">Toggle disponibilité item avec raison + propagation temps réel sur tous les canaux (serveurs, QR clients).</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.menu.editor</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.kitchen.tickets</div>
+      <div class="label">Tickets cuisine kanban</div>
+      <div class="description">Vue kanban draft/pending/inProgress/ready avec timers, élimine le papier en cuisine.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.kitchen.voice_orders</div>
+      <div class="label">Commande vocale dictée serveur</div>
+      <div class="description">Audio (Whisper Titan) ou texte → ticket structuré (Claude). -80% d'erreurs vs papier.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.kitchen.tickets</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.kitchen.recipes</div>
+      <div class="label">Recettes + cuissons + tâches cuisine</div>
+      <div class="description">Étapes par recette (prep/cooking/plating/rest), cooking tasks auto-créées, timer overdue.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.kitchen.tickets</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.margins.compute</div>
+      <div class="label">Calcul de marges temps réel</div>
+      <div class="description">Marge brute par plat avec code couleur ROUGE/JAUNE/VERT paramétrable depuis Settings.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.ingredients.catalog</div>
+      <div class="label">Référentiel ingrédients</div>
+      <div class="description">Catalogue avec prix moyen courant, unités (g/kg/ml/L/pcs/dz), fournisseurs préférés.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.margins.compute</code></div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.food_waste.tracker</div>
+      <div class="label">Tracker gaspillage hebdomadaire</div>
+      <div class="description">Déclaration pertes 30s + récap 7j + breakdown par raison (9 types) et par jour.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.tables.qr</div>
+      <div class="label">Tables avec QR codes clients</div>
+      <div class="description">QR rendu offline (qr_flutter), consultation publique carte HTML responsive, rotation secret anti-fraude.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.shopping.lists</div>
+      <div class="label">Listes de courses partagées</div>
+      <div class="description">Listes thématiques par fournisseur, items checklist, urgences, vue synchronisée temps réel.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.briefing.morning</div>
+      <div class="label">Briefing matinal IA</div>
+      <div class="description">Bouton AppBar ☀️ — Claude rédige planning du jour + courses urgentes + alertes en 15 secondes.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.ai.question</div>
+      <div class="label">Question libre à Claude</div>
+      <div class="description">Chat IA avec contexte Broc (carte + courses + journal récent) en input.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.journal.audit</div>
+      <div class="label">Journal d'audit consultable</div>
+      <div class="description">Vue chronologique filtrable des événements système (actor, action, target, payload, reason).</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.kiosk.mode</div>
+      <div class="label">Mode kiosk tablette cuisine</div>
+      <div class="description">PIN court bcrypt + auto-relogout pour usage tablette partagée (clock-in rapide).</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- EXPÉRIMENTAL                                                    -->
+<!-- ============================================================== -->
+<section class="category" id="experimental">
+  <h2>Expérimental <span class="pill experimental">Phases H, J, K</span></h2>
+  <p class="desc">Modules en cours de conception ou de développement. Désactivés par défaut, activables pour démos ou phases bêta.</p>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.camera.face_recognition</div>
+      <div class="label">Caméras ESP32-S3 : reconnaissance faciale</div>
+      <div class="description">Clock-in automatique via reconnaissance faciale opt-in. Profils stockés localement, jamais envoyés en externe.</div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-h">PHASE H</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.camera.presence</div>
+      <div class="label">Caméras ESP32-S3 : présence zones</div>
+      <div class="description">Détection présence par zone (cuisine/salle/bar/entrée) sans identification. Pour mesurer la fréquentation.</div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-h">PHASE H</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.camera.client_heatmap</div>
+      <div class="label">Caméras ESP32-S3 : heatmap flux client</div>
+      <div class="description">Agrégation présence sur la journée pour dimensionner les shifts. Aide à la prise de réservation terrasse.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.camera.presence</code></div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-h">PHASE H</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.camera.motion_security</div>
+      <div class="label">Caméras ESP32-S3 : détection mouvement post-fermeture</div>
+      <div class="description">Mode sécurité hors heures d'ouverture, alerte manager en cas de mouvement détecté. Pas d'enregistrement vidéo continu (privacy by design).</div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-h">PHASE H</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.qr.client_ordering</div>
+      <div class="label">Commande client au QR</div>
+      <div class="description">Le client commande directement depuis son téléphone via QR de sa table, avec validation par le serveur avant envoi en cuisine.</div>
+      <div class="deps"><strong>Dépend de :</strong> <code>feature.tables.qr</code></div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-j">PHASE J</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.reservations</div>
+      <div class="label">Réservations en ligne</div>
+      <div class="description">Gestion des réservations en ligne et au téléphone, vue planning par service, intégration agenda.</div>
+    </div>
+    <div class="meta"><span class="meta-tag phase-k">PHASE K</span></div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- LICENCE & COMMERCIAL                                            -->
+<!-- ============================================================== -->
+<section class="category" id="licensing">
+  <h2>Licence &amp; commercial <span class="pill licensing">Super-admin uniquement</span></h2>
+  <p class="desc">Les flags stratégiques qui distinguent ce que vous vendez de ce que vous gardez en interne. Modifiables uniquement par le super-admin Stowy.</p>
+
+  <div class="flag on">
+    <div class="state"><span class="badge">ON</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.advanced_settings</div>
+      <div class="label">Paramètres avancés (charges, seuils, profils)</div>
+      <div class="description">Accès aux paramètres système avancés (taux de charges 66 % FR, seuils marges, profils low_cost/standard/premium). <strong>À mettre OFF chez les clients tiers</strong> qui ne doivent pas voir ces leviers stratégiques.</div>
+    </div>
+    <div class="meta"><span class="meta-tag super-admin">SUPER-ADMIN</span></div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.multi_instance</div>
+      <div class="label">Multi-instance / multi-BD</div>
+      <div class="description">Switch entre plusieurs bases (démo client A, démo client B, prod Le Broc). Permet de présenter plusieurs cas d'usage depuis la même installation. Réservé super-admin.</div>
+    </div>
+    <div class="meta">
+      <span class="meta-tag super-admin">SUPER-ADMIN</span>
+      <span class="meta-tag restart">RESTART</span>
+    </div>
+  </div>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.branding.custom</div>
+      <div class="label">Personnalisation branding (logo, couleurs)</div>
+      <div class="description">Permet de personnaliser logo, couleurs principales et secondaires pour un client spécifique. Vente premium possible.</div>
+    </div>
+    <div class="meta"><span class="meta-tag super-admin">SUPER-ADMIN</span></div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- SÉCURITÉ                                                        -->
+<!-- ============================================================== -->
+<section class="category" id="security">
+  <h2>Sécurité <span class="pill security">Durcissement</span></h2>
+  <p class="desc">Renforcements de sécurité activables si le contexte le demande (établissement à risque, accès distant ouvert, etc.).</p>
+
+  <div class="flag off">
+    <div class="state"><span class="badge">OFF</span><div class="default-info">défaut</div></div>
+    <div class="body">
+      <div class="key">feature.security.rate_limit_strict</div>
+      <div class="label">Rate limit strict (3/15min au lieu de 5)</div>
+      <div class="description">Mode anti-bruteforce renforcé : 3 tentatives par fenêtre de 15 minutes par IP au lieu de 5. À activer si exposition au-delà de Tailscale.</div>
+    </div>
+    <div class="meta"></div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- SCÉNARIOS COMMERCIAUX                                           -->
+<!-- ============================================================== -->
+<section class="scenarios" id="scenarios">
+  <h2>🎯 Quatre scénarios commerciaux</h2>
+
+  <div class="scenario">
+    <h3>1. Pack « Cuisine seule » — food-truck ou dark kitchen</h3>
+    <div class="target">Cible : structure légère, pas de salle, pas de personnel à manager</div>
+    <p class="on"><strong>ON</strong> : tous les <code>kitchen.*</code>, <code>menu.*</code>, <code>margins.compute</code>, <code>ingredients.catalog</code>, <code>food_waste.tracker</code>, <code>ai.question</code>.</p>
+    <p class="off"><strong>OFF</strong> : <code>personnel.*</code>, <code>tips.tracking</code>, <code>reports.heatmap</code>, <code>tables.qr</code>, <code>kiosk.mode</code>, <code>shopping.lists</code>.</p>
+  </div>
+
+  <div class="scenario">
+    <h3>2. Pack « Brasserie classique » — client tiers</h3>
+    <div class="target">Cible : restaurant avec équipe + salle + cuisine, mais pas en interne Stowy</div>
+    <p class="on"><strong>ON</strong> : tous les modules métier (20 flags).</p>
+    <p class="off"><strong>OFF</strong> : <code>advanced_settings</code>, <code>multi_instance</code>, <code>branding.custom</code> (les flags stratégiques restent en interne).</p>
+    <p class="on"><strong>Activer en plus</strong> : <code>security.rate_limit_strict</code> (durcissement si accès distant).</p>
+  </div>
+
+  <div class="scenario">
+    <h3>3. Pack « Démo commerciale » — pitch prospect</h3>
+    <div class="target">Cible : montrer la totalité de Broccers à un prospect</div>
+    <p class="on"><strong>ON</strong> : tout, y compris les expérimentaux Phase H pour démontrer la roadmap caméras IA ESP32-S3.</p>
+    <p class="off"><strong>OFF</strong> : rien.</p>
+    <p style="font-size: 0.85rem; color: var(--grey); margin-top: 8px;">Astuce : combiner avec <code>feature.multi_instance</code> pour switcher entre BD démo et BD prod en une commande.</p>
+  </div>
+
+  <div class="scenario">
+    <h3>4. Pack « Interne Stowy » — Le Broc + démos chez prospects</h3>
+    <div class="target">Cible : usage interne avec contrôle total</div>
+    <p class="on"><strong>ON</strong> : tout, y compris <code>advanced_settings</code> et <code>multi_instance</code> pour pouvoir changer de BD à la volée.</p>
+    <p class="off"><strong>OFF</strong> : rien.</p>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- DÉPENDANCES VISUALISÉES                                         -->
+<!-- ============================================================== -->
+<section class="category">
+  <h2>🔗 Graphe des dépendances</h2>
+  <p class="desc">Certains flags nécessitent qu'un autre soit activé. Le serveur refuse une activation (HTTP 409) si la dépendance n'est pas remplie.</p>
+
+  <div style="background: var(--soft); padding: 24px; border-radius: 8px; font-family: 'SF Mono', monospace; font-size: 0.85rem; line-height: 1.8;">
+<pre style="margin:0; color: var(--broc-cream); white-space: pre-wrap;">
+<span style="color: var(--broc-yellow);">feature.personnel.tracking</span>
+  ├── feature.tips.tracking
+  └── feature.reports.heatmap
+
+<span style="color: var(--broc-yellow);">feature.menu.editor</span>
+  ├── feature.menu.import_image
+  ├── feature.menu.pdf
+  └── feature.menu.mode_86
+
+<span style="color: var(--broc-yellow);">feature.kitchen.tickets</span>
+  ├── feature.kitchen.voice_orders
+  └── feature.kitchen.recipes
+
+<span style="color: var(--broc-yellow);">feature.margins.compute</span>
+  └── feature.ingredients.catalog
+
+<span style="color: var(--broc-yellow);">feature.tables.qr</span>
+  └── feature.qr.client_ordering (Phase J)
+
+<span style="color: var(--broc-yellow);">feature.camera.presence</span>
+  └── feature.camera.client_heatmap
+</pre>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- TECHNIQUE                                                       -->
+<!-- ============================================================== -->
+<section class="category">
+  <h2>⚙️ Comment c'est implémenté (1 paragraphe)</h2>
+  <p style="color: var(--grey);">Côté domaine, chaque flag est défini dans <code>SgBrocFeatureFlagsRegistry</code> (br_core/sg_feature_flag.dart) avec sa clé, son label, sa description, sa catégorie, sa valeur par défaut, ses dépendances éventuelles et ses méta-données (super-admin only, requires restart, phase). Côté serveur, l'état effectif est stocké dans la table SQLite <code>settings</code> avec préfixe <code>feature.*</code> — ce qui permet de réutiliser tout le système d'audit et d'historique existant. Côté UI, l'onglet 🛡️ Admin → Feature flags charge <code>GET /api/features</code>, affiche par catégorie avec filtres, et déclenche <code>PUT /api/features/&lt;key&gt;</code> sur chaque toggle. Le serveur valide les dépendances avant d'activer un flag et refuse 409 si une dépendance n'est pas remplie, avec message FR « Activez d'abord : feature.X ».</p>
+
+  <p style="color: var(--grey); margin-top: 14px;">Trois routes HTTP exposent le système : <code>GET /api/features</code> (auth, liste complète avec métadonnées), <code>GET /api/features/&lt;key&gt;</code> (auth, détail d'un flag), <code>PUT /api/features/&lt;key&gt;</code> (auth super-admin, mise à jour avec audit log). Une quatrième route publique <code>GET /api/features/public/enabled</code> liste juste les clés activées — utile pour que l'UI sache quels onglets afficher avant même que l'utilisateur soit loggé.</p>
+</section>
+
+</div>
+
+<footer>
+  Documentation feature flags Broccers v0.8.0 — édition du 1<sup>er</sup> juin 2026 par <strong>Stowy Agency</strong>.
+  <div class="links">
+    <a href="/docs/presentation">📖 Présentation</a>
+    <a href="/docs/specifications">📚 Spécifications exhaustives</a>
+    <a href="/docs/product">🔧 Documentation technique</a>
+    <a href="/api/features">🔌 API live</a>
+  </div>
+</footer>
+
+</body>
+</html>
