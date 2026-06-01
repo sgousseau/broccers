@@ -53,6 +53,9 @@ export 'src/entities/sg_ingredient.dart';
 export 'src/entities/sg_food_waste.dart';
 export 'src/entities/sg_table.dart';
 
+// === Entities — Phase H (feature flags + portabilité) ===
+export 'src/entities/sg_feature_flag.dart';
+
 // === Ports ===
 export 'src/ports/sg_broc_repository_port.dart';
 export 'src/ports/sg_pdf_renderer_port.dart';

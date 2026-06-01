@@ -178,6 +178,17 @@ class BrApiRouter {
     r.get('/menu/<id>/<secret>', _publicMenuByQr);
     r.get('/api/public/menu/<id>/<secret>', _publicMenuJsonByQr);
 
+    // === Phase H — Feature flags ===
+    r.get('/api/features', _withAuth(_listFeatures));
+    r.get('/api/features/<key>', _withAuthId(_getFeature));
+    r.put('/api/features/<key>', _withAuthId(_putFeature));
+    r.get('/api/features/public/enabled', _listPublicEnabledFeatures);
+    // Public route : pour que l'UI sache quels onglets afficher, sans auth.
+
+    // === Phase H — Configuration système (super-admin) ===
+    r.get('/api/system/config', _withAuth(_getSystemConfig));
+    r.get('/api/system/db-info', _withAuth(_getDbInfo));
+
     return r.call;
   }
 
@@ -639,6 +650,226 @@ class BrApiRouter {
       .replaceAll('<', '&lt;')
       .replaceAll('>', '&gt;')
       .replaceAll('"', '&quot;');
+
+  // ============================================================================
+  // Phase H — Feature flags
+  // ============================================================================
+  Future<Response> _listFeatures(Request req) async {
+    final stored = await _repo.listSettings();
+    final byKey = <String, SgSetting>{
+      for (final s in stored.valueOrNull ?? const <SgSetting>[])
+        if (s.key.startsWith('feature.')) s.key: s
+    };
+    final result = SgBrocFeatureFlagsRegistry.allFlags.map((d) {
+      final s = byKey[d.key];
+      final enabledRaw = s?.value;
+      bool enabled;
+      if (enabledRaw is bool) {
+        enabled = enabledRaw;
+      } else if (enabledRaw is String) {
+        enabled = enabledRaw == 'true';
+      } else {
+        enabled = d.defaultEnabled;
+      }
+      return {
+        'key': d.key,
+        'label': d.label,
+        'description': d.description,
+        'category': d.category.name,
+        'category_label': d.category.label,
+        'enabled': enabled,
+        'is_default': s == null,
+        'default_enabled': d.defaultEnabled,
+        'requires_restart': d.requiresRestart,
+        'super_admin_only': d.superAdminOnly,
+        if (d.phase != null) 'phase': d.phase,
+        'depends_on': d.dependsOn,
+        if (s != null) ...{
+          'set_at': s.setAt.toIso8601String(),
+          'set_by': s.setBy,
+        },
+      };
+    }).toList();
+    return _json(200, {'features': result, 'count': result.length});
+  }
+
+  Future<Response> _getFeature(Request req, String key) async {
+    final def = SgBrocFeatureFlagsRegistry.find(key);
+    if (def == null) return _json(404, {'error': 'unknown feature: $key'});
+    final s = await _repo.getSetting(key);
+    final stored = s.valueOrNull;
+    bool enabled = def.defaultEnabled;
+    if (stored != null) {
+      final v = stored.value;
+      enabled = v is bool ? v : (v.toString() == 'true');
+    }
+    return _json(200, {
+      'key': key,
+      'enabled': enabled,
+      'is_default': stored == null,
+      'definition': {
+        'label': def.label,
+        'description': def.description,
+        'category': def.category.name,
+        'requires_restart': def.requiresRestart,
+        'super_admin_only': def.superAdminOnly,
+        if (def.phase != null) 'phase': def.phase,
+        'depends_on': def.dependsOn,
+      },
+    });
+  }
+
+  Future<Response> _putFeature(Request req, String key) async {
+    final def = SgBrocFeatureFlagsRegistry.find(key);
+    if (def == null) return _json(404, {'error': 'unknown feature: $key'});
+    final body = await _readJson(req);
+    final enabled = body['enabled'] as bool?;
+    if (enabled == null) return _json(400, {'error': 'enabled (bool) required'});
+
+    // Check dependencies if enabling
+    if (enabled && def.dependsOn.isNotEmpty) {
+      final allFlags = await _repo.listSettings();
+      final enabledMap = <String, bool>{};
+      for (final s in allFlags.valueOrNull ?? const <SgSetting>[]) {
+        if (s.key.startsWith('feature.')) {
+          final v = s.value;
+          enabledMap[s.key] = v is bool ? v : (v.toString() == 'true');
+        }
+      }
+      // Add defaults for unset flags
+      for (final f in SgBrocFeatureFlagsRegistry.allFlags) {
+        enabledMap.putIfAbsent(f.key, () => f.defaultEnabled);
+      }
+      enabledMap[key] = enabled;
+      final missing = SgBrocFeatureFlagsRegistry.checkDependencies(key, enabledMap);
+      if (missing != null) {
+        return _json(409, {
+          'error': 'dependency_not_met',
+          'missing_dependency': missing,
+          'message': 'Activez d\'abord : $missing',
+        });
+      }
+    }
+
+    final actor = (body['actor'] as String?) ?? 'super_admin';
+    if (def.superAdminOnly && !actor.startsWith('super_admin')) {
+      return _json(403, {'error': 'Super-admin only'});
+    }
+    final note = body['note'] as String?;
+    final now = DateTime.now().toUtc();
+    final setting = SgSetting(
+      key: key,
+      value: enabled,
+      type: SgSettingType.boolValue,
+      setAt: now,
+      setBy: actor,
+    );
+    final r = await _repo.setSetting(setting);
+    return r.when(
+      success: (_) async {
+        await _repo.logEvent(SgEventJournalEntry(
+          id: 'evt-${_idGenerator()}',
+          at: now,
+          actor: actor,
+          action: enabled ? 'feature.enabled' : 'feature.disabled',
+          target: 'feature:$key',
+          payload: {
+            'label': def.label,
+            'category': def.category.name,
+            'requires_restart': def.requiresRestart,
+          },
+          reason: note,
+        ));
+        return _json(200, {
+          'key': key,
+          'enabled': enabled,
+          'set_at': now.toIso8601String(),
+          'set_by': actor,
+          'requires_restart': def.requiresRestart,
+        });
+      },
+      failure: _failureResponse,
+    );
+  }
+
+  /// Liste publique des features activées (clés seulement). Pour que l'UI sache
+  /// quels onglets afficher avant même que l'utilisateur soit loggé.
+  Future<Response> _listPublicEnabledFeatures(Request req) async {
+    final stored = await _repo.listSettings();
+    final overrides = <String, bool>{};
+    for (final s in stored.valueOrNull ?? const <SgSetting>[]) {
+      if (s.key.startsWith('feature.')) {
+        final v = s.value;
+        overrides[s.key] = v is bool ? v : (v.toString() == 'true');
+      }
+    }
+    final enabledKeys = <String>[];
+    for (final f in SgBrocFeatureFlagsRegistry.allFlags) {
+      final isEnabled = overrides[f.key] ?? f.defaultEnabled;
+      if (isEnabled) enabledKeys.add(f.key);
+    }
+    return _json(200, {'enabled': enabledKeys});
+  }
+
+  // ============================================================================
+  // Phase H — System config (super-admin only — observability for portabilité)
+  // ============================================================================
+  Future<Response> _getSystemConfig(Request req) async {
+    return _json(200, {
+      'version': '0.8.0',
+      'data_dir': Platform.environment['BR_DATA_DIR'] ?? '~/.broccers',
+      'db_path': Platform.environment['BR_DB_PATH'] ?? '~/.broccers/broc.db',
+      'host': Platform.environment['BR_HOST'] ?? '127.0.0.1',
+      'port': Platform.environment['BR_PORT'] ?? '8444',
+      'claude_cli': Platform.environment['BR_CLAUDE_CLI_PATH'] ?? '/usr/local/bin/claude',
+      'whisper_url': Platform.environment['BR_WHISPER_URL'],
+      'mode': _detectMode(),
+      'platform': Platform.operatingSystem,
+      'dart_version': Platform.version,
+      'started_at': _serverStartTime.toIso8601String(),
+      'uptime_seconds': DateTime.now().difference(_serverStartTime).inSeconds,
+    });
+  }
+
+  Future<Response> _getDbInfo(Request req) async {
+    final dbPath = Platform.environment['BR_DB_PATH'] ?? '${Platform.environment['HOME']}/.broccers/broc.db';
+    final file = File(dbPath);
+    final exists = await file.exists();
+    int? sizeBytes;
+    DateTime? modifiedAt;
+    if (exists) {
+      final stat = await file.stat();
+      sizeBytes = stat.size;
+      modifiedAt = stat.modified;
+    }
+    // Counts
+    final emps = await _repo.listEmployees(activeOnly: false);
+    final cards = await _repo.listMenuCards(includeDrafts: true);
+    final tables = await _repo.listTables(activeOnly: false);
+    return _json(200, {
+      'path': dbPath,
+      'exists': exists,
+      'size_bytes': sizeBytes,
+      'size_mb': sizeBytes != null ? (sizeBytes / 1024 / 1024).toStringAsFixed(2) : null,
+      'modified_at': modifiedAt?.toIso8601String(),
+      'counts': {
+        'employees': (emps.valueOrNull ?? const []).length,
+        'menu_cards': (cards.valueOrNull ?? const []).length,
+        'tables': (tables.valueOrNull ?? const []).length,
+      },
+    });
+  }
+
+  String _detectMode() {
+    if (Platform.environment['BR_PORTABLE'] == '1') return 'usb_portable';
+    if (Platform.environment['DOCKER_CONTAINER'] == '1' ||
+        File('/.dockerenv').existsSync()) {
+      return 'docker';
+    }
+    return 'tailscale_native';
+  }
+
+  static final DateTime _serverStartTime = DateTime.now().toUtc();
 
   Future<Response> _handleAuthPin(Request req) async {
     final body = await _readJson(req);
