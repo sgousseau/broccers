@@ -1,0 +1,64 @@
+{
+  "tables": [
+    {
+      "id": "tbl-956e6fec-4012-41f5-83e3-dabf2bfe6f6e",
+      "label": "T1",
+      "capacity": 4,
+      "qr_secret": "7abb49b9577f44c0",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.343587Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-956e6fec-4012-41f5-83e3-dabf2bfe6f6e/7abb49b9577f44c0"
+    },
+    {
+      "id": "tbl-8ccd3f4c-b110-4810-9f6a-0287e7b5f554",
+      "label": "T2",
+      "capacity": 4,
+      "qr_secret": "8818e0eac0e54086",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.392460Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-8ccd3f4c-b110-4810-9f6a-0287e7b5f554/8818e0eac0e54086"
+    },
+    {
+      "id": "tbl-03c0617c-f36e-4cdb-abb4-cdaa1e18f60f",
+      "label": "T3",
+      "capacity": 4,
+      "qr_secret": "7b7a4941b4f843cf",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.441374Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-03c0617c-f36e-4cdb-abb4-cdaa1e18f60f/7b7a4941b4f843cf"
+    },
+    {
+      "id": "tbl-2babca91-f4e8-484b-8c33-86bf00bc2d5b",
+      "label": "T4",
+      "capacity": 4,
+      "qr_secret": "afc57851278a497a",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.488287Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-2babca91-f4e8-484b-8c33-86bf00bc2d5b/afc57851278a497a"
+    },
+    {
+      "id": "tbl-896b66c9-b044-4e87-9661-35746ad7dac6",
+      "label": "T5",
+      "capacity": 4,
+      "qr_secret": "6c4680e0968e41e4",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.541198Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-896b66c9-b044-4e87-9661-35746ad7dac6/6c4680e0968e41e4"
+    },
+    {
+      "id": "tbl-ae19d64e-18c5-46f9-a8ef-75915f300da6",
+      "label": "T6",
+      "capacity": 4,
+      "qr_secret": "3f080dd3da934089",
+      "position": "intérieur",
+      "active": true,
+      "created_at": "2026-06-01T14:19:55.585617Z",
+      "public_menu_url": "http://127.0.0.1:8444/menu/tbl-ae19d64e-18c5-46f9-a8ef-75915f300da6/3f080dd3da934089"
+    }
+  ]
+}

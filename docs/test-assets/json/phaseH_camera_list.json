@@ -1,0 +1,57 @@
+{
+  "count": 4,
+  "events": [
+    {
+      "id": "evt-14f43b89-2a4c-4fc5-a397-4c52e2b23cf0",
+      "at": "2026-06-01T22:06:35.924174Z",
+      "actor": "camera:cam-test-report",
+      "action": "camera_event.faceRecognized",
+      "target": "zone:staffRoom",
+      "payload": {
+        "camera_id": "cam-test-report",
+        "zone_id": "staffRoom",
+        "kind": "faceRecognized",
+        "employee_id": "emp-Seb",
+        "confidence": 0.94
+      }
+    },
+    {
+      "id": "evt-a5d8cc41-ab62-44df-9126-ad07369b165f",
+      "at": "2026-06-01T22:06:35.901257Z",
+      "actor": "camera:cam-test-report",
+      "action": "camera_event.presenceDetected",
+      "target": "zone:kitchen",
+      "payload": {
+        "camera_id": "cam-test-report",
+        "zone_id": "kitchen",
+        "kind": "presenceDetected"
+      }
+    },
+    {
+      "id": "evt-a34d7332-9929-4ec1-8c9a-a0c2333ae94f",
+      "at": "2026-06-01T18:50:27.815531Z",
+      "actor": "camera:cam-test-1",
+      "action": "camera_event.faceRecognized",
+      "target": "zone:staffRoom",
+      "payload": {
+        "camera_id": "cam-test-1",
+        "zone_id": "staffRoom",
+        "kind": "faceRecognized",
+        "employee_id": "emp-Seb",
+        "confidence": 0.92
+      }
+    },
+    {
+      "id": "evt-d310ce69-2aba-4a35-92cb-fa09cec1c646",
+      "at": "2026-06-01T18:50:27.798100Z",
+      "actor": "camera:cam-test-1",
+      "action": "camera_event.presenceDetected",
+      "target": "zone:kitchen",
+      "payload": {
+        "camera_id": "cam-test-1",
+        "zone_id": "kitchen",
+        "kind": "presenceDetected"
+      }
+    }
+  ]
+}

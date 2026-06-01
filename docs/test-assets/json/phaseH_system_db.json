@@ -1,0 +1,12 @@
+{
+  "path": "/Users/sgo/.broccers/broc.db",
+  "exists": true,
+  "size_bytes": 4096,
+  "size_mb": "0.00",
+  "modified_at": "2026-05-31T00:23:55.885",
+  "counts": {
+    "employees": 6,
+    "menu_cards": 1,
+    "tables": 6
+  }
+}

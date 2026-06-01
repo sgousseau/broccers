@@ -107,6 +107,9 @@ class BrApiRouter {
     r.get('/docs/overview', _serveDocsOverview);
     r.get('/docs/overview.html', _serveDocsOverview);
     r.get('/overview', _serveDocsOverview);
+    r.get('/docs/test-report', _serveDocsTestReport);
+    r.get('/docs/test-report.html', _serveDocsTestReport);
+    r.get('/docs/test-assets/<filename|.*>', _serveTestAsset);
     r.get('/', _serveDocsIndex);
 
     r.get('/api/employees', _withAuth(_listEmployees));
@@ -1016,6 +1019,38 @@ class BrApiRouter {
   Future<Response> _serveDocsSpecifications(Request req) => _serveDocFile('docs/specifications.html');
   Future<Response> _serveDocsFeatures(Request req) => _serveDocFile('docs/features.html');
   Future<Response> _serveDocsOverview(Request req) => _serveDocFile('docs/overview.html');
+  Future<Response> _serveDocsTestReport(Request req) => _serveDocFile('docs/test-report.html');
+
+  Future<Response> _serveTestAsset(Request req, String filename) async {
+    // Securize : pas de traversée de chemin
+    if (filename.contains('..') || filename.startsWith('/')) {
+      return Response.forbidden('invalid path');
+    }
+    final candidates = [
+      'docs/test-assets/$filename',
+      '../../docs/test-assets/$filename',
+      '../../../docs/test-assets/$filename',
+      '/Users/sgo/Code/broccers/docs/test-assets/$filename',
+    ];
+    for (final p in candidates) {
+      final f = File(p);
+      if (await f.exists()) {
+        final ext = filename.split('.').last.toLowerCase();
+        final ct = switch (ext) {
+          'png' => 'image/png',
+          'jpg' || 'jpeg' => 'image/jpeg',
+          'json' => 'application/json; charset=utf-8',
+          'html' => 'text/html; charset=utf-8',
+          _ => 'application/octet-stream',
+        };
+        return Response.ok(
+          await f.readAsBytes(),
+          headers: {'content-type': ct, 'cache-control': 'public, max-age=3600'},
+        );
+      }
+    }
+    return Response.notFound('Asset not found: $filename');
+  }
 
   Future<Response> _serveDocsIndex(Request req) async {
     return Response.ok(
@@ -1031,6 +1066,7 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
 <h1>Le Broc</h1>
 <p class="lead">Serveur Broccers — Puces du Canal, Villeurbanne</p>
 <p><strong style="color:#f5c842">App PWA :</strong> <a href="http://127.0.0.1:8766">http://127.0.0.1:8766</a> (Flutter Web)</p>
+<p><strong style="color:#f5c842">✅ Rapport de tests E2E (avec preuves) :</strong> <a href="/docs/test-report">/docs/test-report</a></p>
 <p><strong style="color:#f5c842">🌟 Vue d'ensemble (la belle présentation) :</strong> <a href="/docs/overview">/docs/overview</a></p>
 <p><strong style="color:#f5c842">📖 Présentation fonctionnelle (pour les nuls) :</strong> <a href="/docs/presentation">/docs/presentation</a></p>
 <p><strong style="color:#f5c842">📚 Spécifications exhaustives (table des matières) :</strong> <a href="/docs/specifications">/docs/specifications</a></p>

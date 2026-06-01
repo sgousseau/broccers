@@ -1,0 +1,90 @@
+{
+  "employees": [
+    {
+      "id": "emp-1debe09f-3afd-47fb-b86f-dc37c6009f91",
+      "name": "Eros",
+      "roles": [
+        "runner",
+        "bartender",
+        "dishwasher"
+      ],
+      "default_role": "runner",
+      "weekly_default": {
+        "3": "bartender",
+        "4": "runner",
+        "5": "dishwasher"
+      },
+      "contracted_hours": 35.0,
+      "kiosk_name": "Eros",
+      "active": true
+    },
+    {
+      "id": "emp-397ac9e8-c11e-43ce-846e-3ff4025b8c03",
+      "name": "Kevin",
+      "roles": [
+        "server",
+        "bartender"
+      ],
+      "default_role": "server",
+      "weekly_default": {},
+      "contracted_hours": 35.0,
+      "kiosk_name": "kevin",
+      "active": true
+    },
+    {
+      "id": "emp-057b99c2-9c67-4afd-bd14-b1054d69d8db",
+      "name": "Mathieu",
+      "roles": [
+        "cook",
+        "dishwasher"
+      ],
+      "default_role": "cook",
+      "weekly_default": {},
+      "contracted_hours": 35.0,
+      "kiosk_name": "mathieu",
+      "active": true
+    },
+    {
+      "id": "emp-8c2a2d49-6bb4-4451-b6d8-b2002798ef34",
+      "name": "Rico",
+      "roles": [
+        "manager",
+        "bartender",
+        "cook"
+      ],
+      "default_role": "manager",
+      "weekly_default": {},
+      "contracted_hours": 35.0,
+      "kiosk_name": "Rico",
+      "active": true
+    },
+    {
+      "id": "emp-30593fac-09b6-4c9f-b746-09b4f49d5761",
+      "name": "Seb",
+      "roles": [
+        "manager",
+        "server",
+        "bartender"
+      ],
+      "default_role": "manager",
+      "weekly_default": {},
+      "contracted_hours": 35.0,
+      "kiosk_name": "seb",
+      "active": true
+    },
+    {
+      "id": "emp-df3fddb4-b0d4-4d7f-9e90-f58b23f3585c",
+      "name": "Seb (Super Admin)",
+      "roles": [
+        "manager",
+        "cook",
+        "dishwasher"
+      ],
+      "default_role": "manager",
+      "weekly_default": {},
+      "contracted_hours": 70.0,
+      "kiosk_name": "Seb (Super Admin)",
+      "active": true
+    }
+  ]
+}

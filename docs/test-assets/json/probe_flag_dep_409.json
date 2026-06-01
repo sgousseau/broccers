@@ -1,0 +1,5 @@
+{
+  "error": "dependency_not_met",
+  "missing_dependency": "feature.camera.presence",
+  "message": "Activez d'abord : feature.camera.presence"
+}

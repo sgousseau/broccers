@@ -1,0 +1,14 @@
+{
+  "version": "0.8.0",
+  "data_dir": "~/.broccers",
+  "db_path": "~/.broccers/broc.db",
+  "host": "0.0.0.0",
+  "port": "8444",
+  "claude_cli": "/usr/local/bin/claude",
+  "whisper_url": null,
+  "mode": "tailscale_native",
+  "platform": "macos",
+  "dart_version": "3.11.4 (stable) (Tue Mar 24 01:02:20 2026 -0700) on \"macos_x64\"",
+  "started_at": "2026-06-01T22:07:03.965908Z",
+  "uptime_seconds": 0
+}

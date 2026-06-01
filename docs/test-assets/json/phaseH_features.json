@@ -1,0 +1,423 @@
+{
+  "features": [
+    {
+      "key": "feature.personnel.tracking",
+      "label": "Personnel & RH (pointage, planning, rôles)",
+      "description": "Gestion équipe, clock-in/out, multi-rôles, pauses légales.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.tips.tracking",
+      "label": "Suivi pourboires par shift",
+      "description": "Enregistrement et analyse des pourboires shift par shift.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.personnel.tracking"
+      ]
+    },
+    {
+      "key": "feature.reports.heatmap",
+      "label": "Heatmap activité 7 jours",
+      "description": "Vue grille employé × jour avec intensité de couleur.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.personnel.tracking"
+      ]
+    },
+    {
+      "key": "feature.personnel.onboarding",
+      "label": "Onboarding par rôle (HACCP-aware)",
+      "description": "Checklists générées par Claude adaptées au rôle.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.menu.editor",
+      "label": "Éditeur de cartes",
+      "description": "CRUD complet cartes, catégories, plats, allergènes INCO.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.menu.import_image",
+      "label": "Import carte depuis photo (Claude Vision)",
+      "description": "Extraction automatique catégories, plats, prix, allergènes via IA.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.menu.editor"
+      ]
+    },
+    {
+      "key": "feature.menu.pdf",
+      "label": "Export PDF A4 imprimable",
+      "description": "Génération PDF Dart natif aux couleurs Broc.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.menu.editor"
+      ]
+    },
+    {
+      "key": "feature.menu.mode_86",
+      "label": "Mode 86 / Signalement rupture",
+      "description": "Toggle disponibilité item avec raison + propagation temps réel.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.menu.editor"
+      ]
+    },
+    {
+      "key": "feature.kitchen.tickets",
+      "label": "Tickets cuisine kanban",
+      "description": "Vue kanban draft/pending/inProgress/ready avec timers.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.kitchen.voice_orders",
+      "label": "Commande vocale dictée serveur",
+      "description": "Audio (Whisper) ou texte → ticket structuré (Claude).",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.kitchen.tickets"
+      ]
+    },
+    {
+      "key": "feature.kitchen.recipes",
+      "label": "Recettes + cuissons + tâches cuisine",
+      "description": "Étapes par recette, cooking tasks auto, timer overdue.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.kitchen.tickets"
+      ]
+    },
+    {
+      "key": "feature.margins.compute",
+      "label": "Calcul de marges temps réel",
+      "description": "Marge par plat avec code couleur paramétrable depuis Settings.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.ingredients.catalog",
+      "label": "Référentiel ingrédients",
+      "description": "Catalogue avec prix moyen courant, unités, fournisseurs.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": [
+        "feature.margins.compute"
+      ]
+    },
+    {
+      "key": "feature.food_waste.tracker",
+      "label": "Tracker gaspillage hebdomadaire",
+      "description": "Déclaration pertes + récap 7j + breakdown raison/jour.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.tables.qr",
+      "label": "Tables avec QR codes clients",
+      "description": "QR offline, consultation publique carte, rotation secret.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.shopping.lists",
+      "label": "Listes de courses partagées",
+      "description": "Listes par fournisseur, items checklist, urgences.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.briefing.morning",
+      "label": "Briefing matinal IA",
+      "description": "Bouton AppBar, génération Claude (planning + courses + alertes).",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.ai.question",
+      "label": "Question libre à Claude",
+      "description": "Chat IA avec contexte Broc (carte + courses).",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.journal.audit",
+      "label": "Journal d'audit consultable",
+      "description": "Vue chronologique filtrable des événements système.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.kiosk.mode",
+      "label": "Mode kiosk tablette cuisine",
+      "description": "PIN court + auto-relogout pour usage tablette partagée.",
+      "category": "modules",
+      "category_label": "Modules métier",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    },
+    {
+      "key": "feature.camera.face_recognition",
+      "label": "Caméras ESP32-S3 : reconnaissance faciale",
+      "description": "Clock-in automatique via reconnaissance faciale opt-in.",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": true,
+      "is_default": false,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "H",
+      "depends_on": [],
+      "set_at": "2026-06-01T18:50:27.750023Z",
+      "set_by": "super_admin"
+    },
+    {
+      "key": "feature.camera.presence",
+      "label": "Caméras ESP32-S3 : présence zones",
+      "description": "Détection présence par zone (cuisine/salle/bar/entrée).",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "H",
+      "depends_on": []
+    },
+    {
+      "key": "feature.camera.client_heatmap",
+      "label": "Caméras ESP32-S3 : heatmap flux client",
+      "description": "Agrégation présence pour dimensionnement shifts.",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "H",
+      "depends_on": [
+        "feature.camera.presence"
+      ]
+    },
+    {
+      "key": "feature.camera.motion_security",
+      "label": "Caméras ESP32-S3 : détection mouvement post-fermeture",
+      "description": "Mode sécurité hors heures d'ouverture, alerte manager.",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "H",
+      "depends_on": []
+    },
+    {
+      "key": "feature.reservations",
+      "label": "Réservations en ligne",
+      "description": "Gestion des réservations + planning service.",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "K",
+      "depends_on": []
+    },
+    {
+      "key": "feature.qr.client_ordering",
+      "label": "Commande client au QR",
+      "description": "Le client commande directement depuis son téléphone via QR table.",
+      "category": "experimental",
+      "category_label": "Expérimental",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "phase": "J",
+      "depends_on": [
+        "feature.tables.qr"
+      ]
+    },
+    {
+      "key": "feature.advanced_settings",
+      "label": "Paramètres avancés (charges, seuils, profils)",
+      "description": "Accès aux paramètres système avancés. OFF chez clients tiers par défaut.",
+      "category": "licensing",
+      "category_label": "Licence & commercial",
+      "enabled": true,
+      "is_default": true,
+      "default_enabled": true,
+      "requires_restart": false,
+      "super_admin_only": true,
+      "depends_on": []
+    },
+    {
+      "key": "feature.multi_instance",
+      "label": "Multi-instance / multi-BD",
+      "description": "Switch entre plusieurs bases (démo A, démo B, prod). Super-admin uniquement.",
+      "category": "licensing",
+      "category_label": "Licence & commercial",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": true,
+      "super_admin_only": true,
+      "depends_on": []
+    },
+    {
+      "key": "feature.branding.custom",
+      "label": "Personnalisation branding (logo, couleurs)",
+      "description": "Permet de personnaliser branding pour un client spécifique.",
+      "category": "licensing",
+      "category_label": "Licence & commercial",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": true,
+      "depends_on": []
+    },
+    {
+      "key": "feature.security.rate_limit_strict",
+      "label": "Rate limit strict (3/15min au lieu de 5)",
+      "description": "Mode anti-bruteforce renforcé.",
+      "category": "security",
+      "category_label": "Sécurité",
+      "enabled": false,
+      "is_default": true,
+      "default_enabled": false,
+      "requires_restart": false,
+      "super_admin_only": false,
+      "depends_on": []
+    }
+  ],
+  "count": 30
+}

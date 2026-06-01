@@ -1,0 +1,118 @@
+{
+  "cards": [
+    {
+      "id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+      "name": "Carte du jour",
+      "version": 1,
+      "kind": "food",
+      "kind_label": "Plats",
+      "created_at": "2026-06-01T14:19:55.291622Z",
+      "published_at": "2026-06-01T14:20:04.290453Z",
+      "categories": [
+        {
+          "id": "cat-af1f9c83-9760-4bd0-803d-7740123884d7",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "name": "Entrées",
+          "sort_order": 0
+        },
+        {
+          "id": "cat-02b2c294-9b8b-4094-8c33-5f4d753db650",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "name": "Plats",
+          "sort_order": 1
+        },
+        {
+          "id": "cat-ec104ec4-b22e-4ccc-9d16-e3a3b73c08f3",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "name": "Desserts",
+          "sort_order": 2
+        }
+      ],
+      "items": [
+        {
+          "id": "i-a1c09778-474d-4774-9f89-ca2809bdbed8",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-02b2c294-9b8b-4094-8c33-5f4d753db650",
+          "name": "Tartare de bœuf",
+          "description": "Bœuf coupé au couteau, condiments, frites",
+          "price_cents": 1800,
+          "available": true,
+          "allergens": [
+            "mustard",
+            "eggs"
+          ],
+          "sort_order": 0
+        },
+        {
+          "id": "i-1fdc2c4a-a462-438e-9b1c-b43b534295fe",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-af1f9c83-9760-4bd0-803d-7740123884d7",
+          "name": "Œuf mayo",
+          "description": "Comme à la maison",
+          "price_cents": 600,
+          "available": true,
+          "allergens": [
+            "eggs",
+            "mustard"
+          ],
+          "sort_order": 0
+        },
+        {
+          "id": "i-7b414d28-4aab-4faf-ac2e-38724dbd7b28",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-ec104ec4-b22e-4ccc-9d16-e3a3b73c08f3",
+          "name": "Crumble pommes Golden",
+          "description": "Crème pâtissière maison, sablé breton",
+          "price_cents": 850,
+          "available": true,
+          "allergens": [
+            "gluten",
+            "dairy",
+            "eggs"
+          ],
+          "sort_order": 0
+        },
+        {
+          "id": "i-0a0972f2-816a-4c55-9632-9ba257148880",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-02b2c294-9b8b-4094-8c33-5f4d753db650",
+          "name": "Magret de canard",
+          "description": "Sauce vierge au piment d'Espelette, gratin dauphinois",
+          "price_cents": 2200,
+          "available": true,
+          "allergens": [
+            "dairy"
+          ],
+          "sort_order": 1
+        },
+        {
+          "id": "i-a09c523a-fb1f-4a2f-b102-9c2587171925",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-af1f9c83-9760-4bd0-803d-7740123884d7",
+          "name": "Soupe à l'oignon gratinée",
+          "description": "Bouillon maison, croûtons, comté affiné",
+          "price_cents": 950,
+          "available": true,
+          "allergens": [
+            "gluten",
+            "dairy"
+          ],
+          "sort_order": 1
+        },
+        {
+          "id": "i-3eaba38a-658c-4e1d-abb2-2c9b2a1cc6ce",
+          "card_id": "card-c75ad53e-98ff-48c8-ae20-d7313d251d66",
+          "category_id": "cat-02b2c294-9b8b-4094-8c33-5f4d753db650",
+          "name": "Cabillaud rôti",
+          "description": "Légumes de saison glacés",
+          "price_cents": 2400,
+          "available": true,
+          "allergens": [
+            "fish"
+          ],
+          "sort_order": 2
+        }
+      ]
+    }
+  ]
+}
