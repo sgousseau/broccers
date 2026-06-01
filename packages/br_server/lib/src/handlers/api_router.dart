@@ -71,6 +71,15 @@ class BrApiRouter {
     r.post('/api/auth/pin', _handleAuthPin);
     r.post('/api/command', _handleCommand);
 
+    // Documentation HTML (publique — pas d'auth)
+    r.get('/docs', _serveDocsProduct);
+    r.get('/docs/', _serveDocsProduct);
+    r.get('/docs/product', _serveDocsProduct);
+    r.get('/docs/product.html', _serveDocsProduct);
+    r.get('/docs/schema', _serveDocsSchema);
+    r.get('/docs/schema.html', _serveDocsSchema);
+    r.get('/', _serveDocsIndex);
+
     r.get('/api/employees', _withAuth(_listEmployees));
     r.post('/api/employees/<id>/roles', _withAuthId(_handleSetEmployeeRoles));
     r.post('/api/employees/<id>/weekly', _withAuthId(_handleSetWeekly));
@@ -112,6 +121,52 @@ class BrApiRouter {
     final type = result['type'];
     final status = type == 'success' ? 200 : (type == 'invalid_args' ? 400 : 500);
     return _json(status, result);
+  }
+
+  // ==== Doc HTML statiques (servies depuis docs/) ====
+  Future<Response> _serveDocsProduct(Request req) => _serveDocFile('docs/product.html');
+  Future<Response> _serveDocsSchema(Request req) => _serveDocFile('docs/schema.html');
+
+  Future<Response> _serveDocsIndex(Request req) async {
+    return Response.ok(
+      '''<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Le Broc Café · API</title>
+<style>body{background:#14100f;color:#f5ebd6;font-family:-apple-system,sans-serif;padding:40px;text-align:center}
+.b{background:#c72226;color:#f5ebd6;padding:8px 14px;border-radius:6px;font-weight:900;letter-spacing:2px;display:inline-block}
+a{color:#f5c842;text-decoration:none;display:block;padding:8px;font-size:1.2rem}
+a:hover{text-decoration:underline}
+h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135deg,#f5c842,#c72226);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.lead{color:#b5a89a;margin-bottom:30px;font-style:italic}</style></head>
+<body>
+<div class="b">CAFÉ</div>
+<h1>Le Broc</h1>
+<p class="lead">Serveur Broccers — Puces du Canal, Villeurbanne</p>
+<p><strong style="color:#f5c842">App PWA :</strong> <a href="http://127.0.0.1:8766">http://127.0.0.1:8766</a> (Flutter Web)</p>
+<p><strong style="color:#f5c842">Documentation produit :</strong> <a href="/docs/product">/docs/product</a></p>
+<p><strong style="color:#f5c842">Schéma visuel :</strong> <a href="/docs/schema">/docs/schema</a></p>
+<p><strong style="color:#f5c842">API Health :</strong> <a href="/api/health">/api/health</a></p>
+<p style="margin-top:40px;font-size:11px;color:#7a6f63;font-family:monospace">v0.3.0-alpha · SG Framework · Tailscale only · zero cloud public</p>
+</body></html>''',
+      headers: {'content-type': 'text/html; charset=utf-8'},
+    );
+  }
+
+  Future<Response> _serveDocFile(String relativePath) async {
+    final candidates = [
+      relativePath,
+      '../../$relativePath',
+      '../../../$relativePath',
+      '/Users/sgo/Code/broccers/$relativePath',
+    ];
+    for (final p in candidates) {
+      final f = File(p);
+      if (await f.exists()) {
+        return Response.ok(
+          await f.readAsString(),
+          headers: {'content-type': 'text/html; charset=utf-8'},
+        );
+      }
+    }
+    return Response.notFound('Doc not found: $relativePath');
   }
 
   Future<Response> _listEmployees(Request req) async {

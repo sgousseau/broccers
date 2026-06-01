@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Broccers — Documentation produit</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&family=Instrument+Serif&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #14100f;
+    --surface: #1f1818;
+    --surface2: #2a1f1f;
+    --border: rgba(199, 34, 38, 0.4);
+    --text: #f5ebd6;
+    --text-dim: #b5a89a;
+    --text-muted: #7a6f63;
+    --broc-red: #c72226;
+    --broc-red-deep: #8b1a1d;
+    --broc-yellow: #f5c842;
+    --broc-cream: #f5ebd6;
+    --broc-black: #14100f;
+    --green: #16a34a;
+    --gradient-warm: linear-gradient(135deg, #c72226 0%, #8b1a1d 100%);
+    --gradient-mix: linear-gradient(135deg, #f5c842 0%, #c72226 50%, #8b1a1d 100%);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: var(--broc-red); color: var(--bg); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+  nav.top {
+    position: sticky; top: 0;
+    background: rgba(20, 16, 15, 0.85);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 24px;
+  }
+  nav.top .badge {
+    background: var(--broc-red); color: var(--broc-cream);
+    padding: 4px 10px; border-radius: 4px;
+    font-weight: 900; letter-spacing: 1.5px; font-size: 11px;
+  }
+  nav.top .title { font-weight: 800; font-size: 16px; }
+  nav.top .subtitle { color: var(--broc-yellow); font-size: 12px; font-style: italic; }
+  nav.top ul { list-style: none; margin-left: auto; display: flex; gap: 18px; }
+  nav.top a { color: var(--text-dim); text-decoration: none; font-size: 13px; font-weight: 500; transition: color 0.15s; }
+  nav.top a:hover { color: var(--broc-yellow); }
+  @media (max-width: 800px) { nav.top ul { display: none; } }
+
+  header.hero {
+    padding: 80px 24px 48px; text-align: center;
+    background: radial-gradient(ellipse at 50% 0%, rgba(199, 34, 38, 0.18) 0%, transparent 70%);
+  }
+  header.hero .kicker {
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--broc-yellow); font-size: 12px; letter-spacing: 0.2em;
+    text-transform: uppercase; margin-bottom: 12px;
+  }
+  header.hero h1 {
+    font-size: clamp(2.8rem, 8vw, 5rem); font-weight: 900;
+    letter-spacing: -0.03em; line-height: 1; margin-bottom: 12px;
+    background: var(--gradient-mix);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header.hero .tagline {
+    font-family: 'Instrument Serif', serif;
+    font-size: clamp(1.2rem, 2.5vw, 1.6rem);
+    font-style: italic; color: var(--text-dim); max-width: 720px;
+    margin: 0 auto 24px;
+  }
+  header.hero .pills {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  }
+  header.hero .pill {
+    padding: 5px 12px; border: 1px solid var(--border);
+    border-radius: 999px; color: var(--text);
+    background: rgba(199, 34, 38, 0.08);
+  }
+
+  section { padding: 56px 0; border-top: 1px solid var(--border); }
+  section h2 {
+    font-size: clamp(1.6rem, 4vw, 2.4rem); font-weight: 800;
+    margin-bottom: 8px; letter-spacing: -0.02em;
+    display: flex; align-items: center; gap: 12px;
+  }
+  section h2 .num {
+    display: inline-flex; width: 36px; height: 36px;
+    align-items: center; justify-content: center;
+    background: var(--broc-red); color: var(--broc-cream);
+    border-radius: 8px; font-size: 16px; font-weight: 900;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  section .lead {
+    color: var(--text-dim); margin-bottom: 28px; max-width: 800px;
+    font-size: 15px;
+  }
+  section h3 {
+    font-size: 1.2rem; font-weight: 700; margin: 28px 0 10px;
+    color: var(--broc-yellow);
+  }
+  section h4 {
+    font-size: 0.95rem; font-weight: 700; margin: 16px 0 6px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text);
+  }
+  p { margin-bottom: 10px; color: var(--text-dim); }
+  p strong { color: var(--text); font-weight: 600; }
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin-bottom: 4px; color: var(--text-dim); }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em;
+    background: var(--surface2); padding: 2px 6px; border-radius: 3px; color: var(--broc-yellow); }
+  pre {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 6px; padding: 14px 16px; overflow-x: auto;
+    margin: 12px 0; font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--text);
+  }
+  pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+
+  .grid { display: grid; gap: 16px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 18px;
+  }
+  .card h3 { margin-top: 0; }
+  .card .meta {
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--broc-yellow); text-transform: uppercase;
+    letter-spacing: 0.1em; margin-bottom: 6px;
+  }
+
+  table {
+    width: 100%; border-collapse: collapse; margin: 12px 0;
+    font-size: 13px;
+  }
+  th, td {
+    text-align: left; padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  th { color: var(--broc-yellow); font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.05em; font-size: 11px; }
+  td { color: var(--text-dim); }
+  td:first-child { color: var(--text); font-weight: 500; }
+
+  .stat-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px; margin: 16px 0;
+  }
+  .stat {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 14px; text-align: center;
+  }
+  .stat .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 2rem; font-weight: 900; color: var(--broc-red);
+    line-height: 1;
+  }
+  .stat .lab { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+
+  .phase-badge { display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    font-weight: 700; letter-spacing: 0.1em; }
+  .phase-A { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7; }
+  .phase-B { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid #22c55e; }
+  .phase-D { background: rgba(245, 200, 66, 0.2); color: var(--broc-yellow); border: 1px solid var(--broc-yellow); }
+  .phase-E { background: rgba(199, 34, 38, 0.2); color: #fca5a5; border: 1px solid var(--broc-red); }
+
+  .philo {
+    background: linear-gradient(135deg, rgba(199, 34, 38, 0.12), rgba(245, 200, 66, 0.08));
+    border-left: 4px solid var(--broc-red);
+    padding: 20px 24px; margin: 20px 0; border-radius: 0 8px 8px 0;
+  }
+  .philo strong { color: var(--broc-yellow); }
+
+  footer {
+    padding: 60px 24px; text-align: center;
+    border-top: 1px solid var(--border);
+    background: linear-gradient(180deg, transparent 0%, var(--surface) 100%);
+  }
+  footer .sig {
+    font-family: 'Instrument Serif', serif; font-size: 1.4rem;
+    color: var(--text-dim); margin-bottom: 8px;
+  }
+  footer .sig span { color: var(--broc-red); }
+  footer .meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-muted); }
+  footer a { color: var(--broc-yellow); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="badge">CAFÉ</div>
+  <div>
+    <div class="title">Broccers</div>
+    <div class="subtitle">Documentation produit · v0.3.0-alpha</div>
+  </div>
+  <ul>
+    <li><a href="#stats">Stats</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#archi">Architecture</a></li>
+    <li><a href="#api">API</a></li>
+    <li><a href="#philo">Philo SG</a></li>
+    <li><a href="#run">Démarrer</a></li>
+  </ul>
+</nav>
+
+<header class="hero">
+  <div class="kicker">Brasserie Broc · Puces du Canal · Villeurbanne</div>
+  <h1>Broccers</h1>
+  <p class="tagline">Gestion brasserie : personnel multi-rôles · carte PDF · courses · IA · pourboires · cuisine vocale · recettes & cuissons.</p>
+  <div class="pills">
+    <div class="pill">🔐 Tailscale only</div>
+    <div class="pill">🍻 Mac Studio</div>
+    <div class="pill">🧠 Claude Max cluster</div>
+    <div class="pill">🎙️ Whisper Titan (optionnel)</div>
+    <div class="pill">🧱 SG Framework</div>
+    <div class="pill">⚙️ Dart 3.8+ / Flutter Web</div>
+  </div>
+</header>
+
+<!-- ============= STATS ============= -->
+<section id="stats" class="wrap">
+  <h2><span class="num">01</span> Statistiques produit</h2>
+  <p class="lead">Volume objectif livré en 5 sessions (2026-05-30 → 2026-06-01).</p>
+
+  <div class="stat-grid">
+    <div class="stat"><div class="num">4</div><div class="lab">Packages Dart</div></div>
+    <div class="stat"><div class="num">24</div><div class="lab">Entités SG</div></div>
+    <div class="stat"><div class="num">27</div><div class="lab">UseCases</div></div>
+    <div class="stat"><div class="num">51</div><div class="lab">Commandes</div></div>
+    <div class="stat"><div class="num">18</div><div class="lab">Tables SQLite</div></div>
+    <div class="stat"><div class="num">7</div><div class="lab">Onglets UI</div></div>
+    <div class="stat"><div class="num">19/19</div><div class="lab">Tests verts</div></div>
+    <div class="stat"><div class="num">0</div><div class="lab">Issue analyze</div></div>
+  </div>
+</section>
+
+<!-- ============= FEATURES ============= -->
+<section id="features" class="wrap">
+  <h2><span class="num">02</span> Features livrées</h2>
+  <p class="lead">7 onglets UI couvrant tout le cycle d'exploitation d'une brasserie : personnel & paie · cuisine vocale · carte imprimable · courses · IA · audit · coûts.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <div class="meta">v0.1.0 · 4 features fondatrices</div>
+      <h3>🧱 Bootstrap</h3>
+      <p>Personnel (CRUD + planning + clock-in/out + pauses droit du travail FR), carte dynamique avec PDF A4 imprimable allergènes INCO, listes de courses checklist par fournisseur, chat IA Claude avec contexte Broc.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-A">PHASE A</span> · multi-rôles dynamique</div>
+      <h3>👥 Multi-rôles + Journal</h3>
+      <p><code>SgEmployee.roles: Set</code> (capabilities) + <code>weeklyDefault</code> (planning hebdo) + <code>SgShiftSegment</code> (N segments par shift) + <code>SgEventJournalEntry</code> (audit log universel). Eros peut changer entre runner/barman/plonge en cours de shift, tout est tracé avec actor + reason.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-B">PHASE B</span> · coûts</div>
+      <h3>💶 Taux horaires + Conso staff</h3>
+      <p><code>SgHourlyRate</code> versionné par employé/rôle (history), <code>SgStaffConsumption</code> (repas/boissons consommés par staff, paid ou à débiter). <code>ComputeShiftCostUseCase</code> agrège heures × tarifs par segment pour total main d'œuvre.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-D">PHASE D</span> · IA + analyse</div>
+      <h3>☀️ Briefing matinal + Pourboires + Heatmap + Onboarding</h3>
+      <p>Bouton AppBar génère briefing Claude (planning + plats + courses urgentes). <code>tipCents</code> sur chaque shift. Heatmap 7j employé × jour. Onboarding par rôle : Claude génère 10-15 items concrets (HACCP-aware) cochables.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-E">PHASE E</span> · cuisine vocale</div>
+      <h3>🎙️ Commande vocale → Tickets cuisine</h3>
+      <p>Le serveur dicte « table 7 deux ricards une entrecôte saignante avec frites un magret rosé sans gratin ». Whisper STT (optionnel) → Claude parse JSON → <code>SgKitchenTicket</code> draft avec items + modifiers. Validation visuelle → envoi cuisine.</p>
+    </div>
+    <div class="card">
+      <div class="meta"><span class="phase-badge phase-E">PHASE E</span> · cuisine</div>
+      <h3>🍳 Recettes / Étapes / Cuissons</h3>
+      <p><code>SgRecipe</code> par menu item avec <code>SgRecipeStep</code> (type : prep/cooking/plating/rest, durée attendue). Au send-to-kitchen, <code>SgCookingTask</code> auto-créées. Cuisine clique Démarrer → timer. ⚠ DÉPASSÉ en rouge si overdue.</p>
+    </div>
+  </div>
+
+  <h3>Les 7 onglets UI</h3>
+  <table>
+    <thead><tr><th>Onglet</th><th>Contenu</th><th>Actions</th></tr></thead>
+    <tbody>
+      <tr><td>👥 Personnel</td><td>Liste employés, badges EN SERVICE/PAUSE/OFF, planning hebdo, journal</td><td>Clock-in/out · Pause · Change-role mid-shift · Onboarding · Archive</td></tr>
+      <tr><td>🍴 Cuisine</td><td>Kanban tickets (drafts/cuisine en cours/prêt à servir) + tâches cuisine</td><td>Nouvelle commande vocale (FAB) · Statut item · Start/Complete task</td></tr>
+      <tr><td>📖 Carte</td><td>Liste cartes versionnées, brouillons et publiées</td><td>Créer sample · Publier · Exporter PDF A4</td></tr>
+      <tr><td>🛒 Courses</td><td>Listes + items checklist par fournisseur</td><td>Créer liste · Ajouter item (urgent) · Check/uncheck</td></tr>
+      <tr><td>🧠 Question</td><td>Chat Claude avec contexte Broc (carte + courses)</td><td>Poser une question · Historique</td></tr>
+      <tr><td>📋 Journal</td><td>Audit log filtrable par actor / action</td><td>Filtres date/acteur/type · Refresh</td></tr>
+      <tr><td>💶 Coûts</td><td>Taux horaires + conso staff + pourboires + heatmap 7j</td><td>Définir taux · Enregistrer conso · Set tip · Voir activité</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ============= ARCHI ============= -->
+<section id="archi" class="wrap">
+  <h2><span class="num">03</span> Architecture SG</h2>
+  <p class="lead">Clean Architecture 4 couches · Result&lt;T,E&gt; · Port/Adapter universel · Sg prefix obligatoire.</p>
+
+  <h3>Stack technique</h3>
+  <ul>
+    <li><strong>Frontend</strong> : Flutter Web PWA (br_web), Material + wrappers <code>br_sg.dart</code> (skin Broc, API-compatible sg_ui)</li>
+    <li><strong>Backend</strong> : Dart shelf (br_server) sur Mac Studio, port 8444</li>
+    <li><strong>Storage</strong> : SQLite WAL local (<code>~/.broccers/broc.db</code>)</li>
+    <li><strong>PDF</strong> : package <code>pdf</code> Dart natif (server-side, A4 imprimable)</li>
+    <li><strong>IA</strong> : Claude Max via <code>claude -p</code> subprocess sur cluster Tailscale (jamais API Anthropic)</li>
+    <li><strong>STT</strong> : Whisper sur Titan via Tailscale (optionnel, fallback texte)</li>
+    <li><strong>Réseau</strong> : Tailscale mesh only — aucun cloud public</li>
+    <li><strong>Auth</strong> : PIN bcrypt + rate-limit 5/15min + JWT HS256 24h</li>
+  </ul>
+
+  <h3>Packages</h3>
+  <table>
+    <thead><tr><th>Package</th><th>Rôle</th><th>Lignes</th></tr></thead>
+    <tbody>
+      <tr><td><code>br_core</code></td><td>Domain pur — entities Sg*, ports, usecases, failures, Result&lt;T,E&gt;</td><td>~3000</td></tr>
+      <tr><td><code>br_server</code></td><td>Backend shelf — SQLite, PIN auth, PDF, Claude, voice parser, TestControlServer</td><td>~3500</td></tr>
+      <tr><td><code>br_web</code></td><td>Flutter Web PWA — 7 screens + br_sg.dart wrappers</td><td>~3000</td></tr>
+      <tr><td><code>br_cli</code></td><td>CLI <code>br</code> — auth, command proxy, pdf download</td><td>~250</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Entités SG (24 au total)</h3>
+  <div class="grid grid-3">
+    <div class="card"><h4>Personnel</h4><p style="font-size:12px">SgEmployee · SgEmployeeRole · SgWeekday · SgShift · SgShiftSegment · SgBreak · SgBreakType</p></div>
+    <div class="card"><h4>Menu</h4><p style="font-size:12px">SgMenuCard · SgMenuItem · SgMenuCategory · SgAllergen · SgPdfExport</p></div>
+    <div class="card"><h4>Courses</h4><p style="font-size:12px">SgShoppingList · SgShoppingItem · SgSupplier</p></div>
+    <div class="card"><h4>IA + Kiosk + Journal</h4><p style="font-size:12px">SgQuestion · SgKioskSession · SgEventJournalEntry (promu vers sg-packages)</p></div>
+    <div class="card"><h4>Coûts (Phase B)</h4><p style="font-size:12px">SgHourlyRate · SgStaffConsumption</p></div>
+    <div class="card"><h4>Onboarding (Phase D)</h4><p style="font-size:12px">SgOnboardingChecklist · SgOnboardingItem</p></div>
+    <div class="card"><h4>Cuisine vocale (Phase E)</h4><p style="font-size:12px">SgKitchenTicket · SgKitchenTicketItem · SgRecipe · SgRecipeStep · SgCookingTask</p></div>
+  </div>
+
+  <h3>Ports SG (5)</h3>
+  <ul>
+    <li><code>SgBrocRepositoryPort</code> — CRUD unifié toutes entités (split Query/Command en v0.4)</li>
+    <li><code>SgPdfRendererPort</code> — render carte → bytes PDF (adapter <code>PdfDartMenuRenderer</code>)</li>
+    <li><code>SgQuestionPort</code> — chat IA contexte Broc (adapter <code>ClaudeCliQuestion</code>)</li>
+    <li><code>SgClockPort</code> — temps (injectable pour testabilité)</li>
+    <li><code>SgVoiceParserPort</code> — voix → ticket items structurés (adapter <code>ClaudeVoiceParser</code> avec Whisper Titan optionnel)</li>
+  </ul>
+</section>
+
+<!-- ============= API ============= -->
+<section id="api" class="wrap">
+  <h2><span class="num">04</span> API · TestControlServer</h2>
+  <p class="lead">Chaque feature est testable en HTTP via <code>POST /api/command {"cmd":"..."}</code> — pattern SG TestControlServer. 51 commandes disponibles, retour <code>SgCommandResult</code> JSON.</p>
+
+  <h3>REST endpoints clés</h3>
+  <pre><code>GET  /api/health                          # status + version
+POST /api/auth/pin                        # {pin} → {token JWT}
+POST /api/command                         # {cmd: "..."} → SgCommandResult
+
+# Personnel
+GET  /api/employees                       # liste
+POST /api/employees/:id/roles             # {roles: [...], default_role: X}
+POST /api/employees/:id/weekly            # {weekly: {1: "runner", 3: "bartender"}}
+POST /api/shifts/clock-in                 # {employee_id, role?, actor?, reason?}
+POST /api/shifts/clock-out                # {employee_id, actor?, reason?}
+POST /api/shifts/change-role              # {employee_id, role, actor, reason?}
+POST /api/breaks/start                    # {employee_id, type: "legal"|"lunch"|"quick"}
+POST /api/breaks/end                      # {employee_id}
+
+# Menu + courses
+GET  /api/menu/cards                      # liste cartes
+POST /api/menu/cards/:id/publish          # publier
+GET  /api/menu/cards/:id/pdf              # download PDF A4
+GET  /api/shopping/lists                  # listes courses
+POST /api/shopping/items                  # ajouter item
+POST /api/shopping/items/:id/check        # cocher
+
+# IA + observability
+POST /api/questions                       # {question, scope: ["menu","shopping"]}
+GET  /api/events                          # journal filtrable</code></pre>
+
+  <h3>Commandes TestControlServer (sélection)</h3>
+  <pre><code># Personnel & shifts
+employee list / create / get / set-roles / set-weekly / archive
+shift clock-in / clock-out / active / list / change-role / segments
+break start / end / active
+
+# Cuisine vocale (Phase E)
+ticket parse --text "table 7 deux ricards une entrecôte saignante" [--table N]
+ticket list [--status voiceDraft|pendingKitchen|inProgress|ready|served]
+ticket send <id>
+ticket item-status --item X --status pending|cooking|ready|served|cancelled
+recipe list / get / create-sample --item <menu_item_id>
+cooking list [--status X] / start <id> [--by employee] / complete <id>
+
+# Pourboires + coûts (Phase B+D)
+tip set --shift X --cents 2500
+rate set --employee X --cents 1500 [--role bartender]
+consumption record --employee X --label "café" --cents 300 [--paid]
+cost shift --shift <id>
+
+# IA + onboarding (Phase D)
+briefing today
+onboarding generate --employee X --role manager
+onboarding check --checklist X --item 3
+
+# Audit (Phase A)
+events list [--actor X --action Y --limit N]
+audit</code></pre>
+
+  <h3>Exemple E2E commande vocale</h3>
+  <pre><code>$ curl -X POST http://127.0.0.1:8444/api/command -H 'content-type: application/json' \
+  -d '{"cmd":"ticket parse --text \"table 7 deux ricards une entrecôte saignante avec frites un magret rosé sans gratin et un crumble pommes\""}'
+
+{
+  "type": "success",
+  "result": {
+    "id": "tk-0a442b24-...",
+    "table_number": 7,
+    "status": "voiceDraft",
+    "items": [
+      {"label": "Ricard", "quantity": 2, "modifiers": []},
+      {"label": "Entrecôte frites", "quantity": 1, "modifiers": ["saignante", "avec frites"]},
+      {"label": "Magret", "quantity": 1, "modifiers": ["rosé", "sans gratin"]},
+      {"label": "Crumble pommes", "quantity": 1, "modifiers": []}
+    ]
+  }
+}</code></pre>
+</section>
+
+<!-- ============= PHILO ============= -->
+<section id="philo" class="wrap">
+  <h2><span class="num">05</span> Philosophie SG inviolable</h2>
+
+  <div class="philo">
+    <p style="margin: 0; font-size: 15px;">
+      <strong>Observability bienveillante.</strong>
+      Le journal sert à <strong>COMPRENDRE et AMÉLIORER</strong>, jamais à réprimander.
+      Les alertes vont au manager, jamais à l'employé directement.
+      Formulation hypothétique (« semble », « peut-être »), pas accusatoire.
+      Objectif : analyse comportementale pour optimiser, pas surveillance.
+    </p>
+  </div>
+
+  <h3>Règles SG inviolables (CLAUDE.md projet)</h3>
+  <ul>
+    <li><strong>Clean Architecture 4 couches</strong> (Domain / Adapter / Provider / UI)</li>
+    <li><strong>Result&lt;T,E&gt;</strong> partout — jamais de <code>throw</code> cross-layer</li>
+    <li><strong>Port / Adapter</strong> pour toute dépendance externe (Claude, SQLite, Whisper, PDF, auth)</li>
+    <li><strong>Sg prefix</strong> sur toute classe/enum publique</li>
+    <li><strong>sg_ui obligatoire</strong> dans br_web (via wrappers <code>br_sg.dart</code> en attendant migration complète sg_ui v0.4)</li>
+    <li><strong>Command-First</strong> : chaque feature DOIT exister en CLI/TestControlServer avant l'UI</li>
+    <li><strong>CHANGELOG.md</strong> de chaque package à chaque changement</li>
+    <li><strong>SDK</strong> uniforme <code>&gt;=3.8.0 &lt;4.0.0</code></li>
+    <li><strong>Pas d'API Anthropic directe</strong> — toujours <code>claude -p</code> cluster Tailscale</li>
+    <li><strong>Pas de quick fix</strong> — toute problème récurrent = abstraction Port/Adapter</li>
+  </ul>
+
+  <h3>Promu vers sg-packages</h3>
+  <p>Concept <code>SgEventJournal</code> identifié dans Broccers a été promu vers <code>~/Code/sg-packages/packages/sg_event_journal/</code> (commit <code>d4c01f7</code> sur <a href="https://github.com/sgousseau/sg-packages">github.com/sgousseau/sg-packages</a>). Réutilisable cross-app maintenant.</p>
+</section>
+
+<!-- ============= RUN ============= -->
+<section id="run" class="wrap">
+  <h2><span class="num">06</span> Démarrer</h2>
+
+  <h3>Server (Mac Studio)</h3>
+  <pre><code>cd ~/Code/broccers
+dart run scripts/setup-pin.dart 2468   # génère bcrypt hash + JWT secret
+export BR_PIN_BCRYPT_HASH='$2a$12$...'
+export BR_JWT_SECRET='...'
+export BR_CLAUDE_CLI='/Users/sgo/.local/bin/claude'
+export BR_WHISPER_URL='http://titan:9000'  # optionnel
+dart run packages/br_server/bin/server.dart
+# → http://127.0.0.1:8444</code></pre>
+
+  <h3>Frontend Flutter Web</h3>
+  <pre><code>cd ~/Code/broccers/packages/br_web
+flutter run -d chrome --web-port=8766 --target lib/main.dart
+# → http://127.0.0.1:8766 — PIN 2468</code></pre>
+
+  <h3>CLI</h3>
+  <pre><code>cd ~/Code/broccers
+dart run packages/br_cli/bin/br.dart auth 2468
+dart run packages/br_cli/bin/br.dart cmd "audit"
+dart run packages/br_cli/bin/br.dart cmd "ticket parse --text 'table 5 deux bières'"
+dart run packages/br_cli/bin/br.dart pdf <card-id> --out menu.pdf</code></pre>
+
+  <h3>Cette doc même</h3>
+  <pre><code># Accessible directement depuis le serveur :
+open http://127.0.0.1:8444/docs
+
+# Ou le schema visuel :
+open http://127.0.0.1:8444/docs/schema</code></pre>
+</section>
+
+<footer>
+  <p class="sig">Conçu par <span>Sébastien Gousseau</span> avec son frérot IA</p>
+  <p class="meta">Stowy Agency · SG Framework · 2026-06-01 · v0.3.0-alpha</p>
+  <p style="margin-top: 12px;"><a href="https://github.com/sgousseau/broccers" target="_blank">github.com/sgousseau/broccers</a> · <a href="https://github.com/sgousseau/sg-packages" target="_blank">sg-packages</a></p>
+</footer>
+
+</body>
+</html>

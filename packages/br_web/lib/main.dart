@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 
 import 'src/api.dart';
+import 'src/br_sg.dart';
 
 const _apiBase = String.fromEnvironment(
   'BR_API_URL',
@@ -177,35 +178,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 40),
-                TextField(
+                SgTextField(
                   controller: _pinCtrl,
                   obscureText: true,
                   keyboardType: TextInputType.number,
                   autofocus: true,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 24, letterSpacing: 8),
-                  decoration: const InputDecoration(
-                    labelText: 'PIN',
-                    border: OutlineInputBorder(),
-                  ),
+                  textStyle: const TextStyle(fontSize: 24, letterSpacing: 8),
+                  label: 'PIN',
                   onSubmitted: (_) => _submit(),
                 ),
                 if (_error != null) ...[
                   const SizedBox(height: 12),
-                  Text(_error!,
-                      style: const TextStyle(color: Colors.redAccent)),
+                  SgCallout.error(_error!),
                 ],
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: _busy ? null : _submit,
-                  style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(48)),
-                  child: _busy
-                      ? const SizedBox(
-                          height: 20,
-                          width: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text('Entrer'),
+                SizedBox(
+                  width: double.infinity,
+                  child: SgButton(
+                    label: 'Entrer',
+                    icon: Icons.login,
+                    onPressed: _busy ? null : _submit,
+                    busy: _busy,
+                  ),
                 ),
               ],
             ),
