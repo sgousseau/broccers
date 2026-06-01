@@ -189,6 +189,12 @@ class BrApiRouter {
     r.get('/api/system/config', _withAuth(_getSystemConfig));
     r.get('/api/system/db-info', _withAuth(_getDbInfo));
 
+    // === Phase H — Caméras IA ESP32-S3 Sense (gated par feature flag) ===
+    // POST sans auth car les caméras n'ont pas de JWT. Validation via shared
+    // secret + check feature flag camera.face_recognition activé.
+    r.post('/api/camera-events', _ingestCameraEvent);
+    r.get('/api/camera-events', _withAuth(_listCameraEvents));
+
     return r.call;
   }
 
@@ -870,6 +876,112 @@ class BrApiRouter {
   }
 
   static final DateTime _serverStartTime = DateTime.now().toUtc();
+
+  // ============================================================================
+  // Phase H — Caméras ESP32-S3 Sense
+  // ============================================================================
+
+  /// Endpoint d'ingestion d'événement caméra.
+  /// Auth : shared secret via header X-Camera-Secret (configuré par camera).
+  /// Refusé si feature.camera.face_recognition est OFF.
+  Future<Response> _ingestCameraEvent(Request req) async {
+    // Check feature flag
+    final flagRes = await _repo.getSetting('feature.camera.face_recognition');
+    final flagVal = flagRes.valueOrNull?.value;
+    final enabled = flagVal is bool ? flagVal : (flagVal?.toString() == 'true');
+    if (enabled != true) {
+      return _json(403, {'error': 'Camera module disabled (feature flag OFF)'});
+    }
+
+    // Shared secret check (TODO Phase H : per-camera secret)
+    final expectedSecret = Platform.environment['BR_CAMERA_SHARED_SECRET'];
+    if (expectedSecret == null || expectedSecret.isEmpty) {
+      return _json(503, {'error': 'BR_CAMERA_SHARED_SECRET not configured'});
+    }
+    final providedSecret = req.headers['x-camera-secret'];
+    if (providedSecret != expectedSecret) {
+      return _json(401, {'error': 'invalid camera secret'});
+    }
+
+    final body = await _readJson(req);
+    final cameraId = body['camera_id'] as String?;
+    final zoneId = body['zone_id'] as String?;
+    final kindStr = body['kind'] as String?;
+    if (cameraId == null || zoneId == null || kindStr == null) {
+      return _json(400, {'error': 'camera_id + zone_id + kind required'});
+    }
+    final kind = SgCameraEventKind.fromName(kindStr);
+    final event = SgCameraEvent(
+      id: 'cam-evt-${_idGenerator()}',
+      cameraId: cameraId,
+      zoneId: zoneId,
+      kind: kind,
+      at: body['at'] != null
+          ? DateTime.parse(body['at'] as String)
+          : DateTime.now().toUtc(),
+      employeeId: body['employee_id'] as String?,
+      confidence: (body['confidence'] as num?)?.toDouble(),
+      count: (body['count'] as num?)?.toInt(),
+      payload: (body['payload'] as Map<String, dynamic>?) ?? const {},
+    );
+
+    // Stockage actuel : via le journal d'audit (append-only).
+    // Phase H finale : table dédiée camera_events + topologie SgCamera/SgZone.
+    await _repo.logEvent(SgEventJournalEntry(
+      id: 'evt-${_idGenerator()}',
+      at: event.at,
+      actor: 'camera:$cameraId',
+      action: 'camera_event.${kind.name}',
+      target: 'zone:$zoneId',
+      payload: {
+        'camera_id': cameraId,
+        'zone_id': zoneId,
+        'kind': kind.name,
+        if (event.employeeId != null) 'employee_id': event.employeeId,
+        if (event.confidence != null) 'confidence': event.confidence,
+        if (event.count != null) 'count': event.count,
+        ...event.payload,
+      },
+    ));
+
+    // Cas spécial : visage reconnu → déclencher clock-in
+    if (kind == SgCameraEventKind.faceRecognized && event.employeeId != null) {
+      // TODO Phase H finale : appeler _clockIn use case avec actor=camera
+      // En attendant : juste loguer l'intention.
+      await _repo.logEvent(SgEventJournalEntry(
+        id: 'evt-${_idGenerator()}',
+        at: event.at,
+        actor: 'system',
+        action: 'camera_event.clock_in_intent',
+        target: 'employee:${event.employeeId}',
+        payload: {
+          'camera_id': cameraId,
+          'zone_id': zoneId,
+          'confidence': event.confidence,
+        },
+        reason: 'Auto clock-in via face recognition (Phase H, non implémenté côté usecase)',
+      ));
+    }
+
+    return _json(201, event.toJson());
+  }
+
+  Future<Response> _listCameraEvents(Request req) async {
+    final q = req.url.queryParameters;
+    final r = await _repo.listEvents(
+      action: q['kind'] != null ? 'camera_event.${q['kind']}' : null,
+      targetPrefix: q['zone_id'] != null ? 'zone:${q['zone_id']}' : 'zone:',
+      limit: int.tryParse(q['limit'] ?? '100'),
+    );
+    return r.when(
+      success: (events) => _json(200, {
+        'count': events.length,
+        'events': events.where((e) => e.action.startsWith('camera_event.'))
+            .map((e) => e.toJson()).toList(),
+      }),
+      failure: _failureResponse,
+    );
+  }
 
   Future<Response> _handleAuthPin(Request req) async {
     final body = await _readJson(req);
