@@ -96,6 +96,8 @@ class BrApiRouter {
     r.get('/docs/product.html', _serveDocsProduct);
     r.get('/docs/schema', _serveDocsSchema);
     r.get('/docs/schema.html', _serveDocsSchema);
+    r.get('/docs/presentation', _serveDocsPresentation);
+    r.get('/docs/presentation.html', _serveDocsPresentation);
     r.get('/', _serveDocsIndex);
 
     r.get('/api/employees', _withAuth(_listEmployees));
@@ -109,8 +111,26 @@ class BrApiRouter {
     r.post('/api/breaks/end', _withAuth(_handleEndBreak));
     r.get('/api/menu/cards', _withAuth(_listMenuCards));
     r.get('/api/menu/cards/current', _withAuth(_currentMenuCard));
+    r.get('/api/menu/cards/<id>', _withAuthId(_getMenuCard));
+    r.post('/api/menu/cards', _withAuth(_createMenuCard));
+    r.put('/api/menu/cards/<id>', _withAuthId(_updateMenuCardMeta));
+    r.delete('/api/menu/cards/<id>', _withAuthId(_deleteMenuCard));
     r.post('/api/menu/cards/<id>/publish', _withAuthId(_publishMenuCard));
     r.get('/api/menu/cards/<id>/pdf', _withAuthId(_downloadMenuCardPdf));
+
+    // === Phase G — Menu items CRUD ===
+    r.post('/api/menu/cards/<id>/items', _withAuthId(_createMenuItemRoute));
+    r.put('/api/menu/items/<id>', _withAuthId(_updateMenuItemRoute));
+    r.delete('/api/menu/items/<id>', _withAuthId(_deleteMenuItemRoute));
+    r.post('/api/menu/items/reorder', _withAuth(_reorderMenuItems));
+
+    // === Phase G — Menu categories CRUD ===
+    r.post('/api/menu/cards/<id>/categories', _withAuthId(_createCategoryRoute));
+    r.put('/api/menu/categories/<id>', _withAuthId(_updateCategoryRoute));
+    r.delete('/api/menu/categories/<id>', _withAuthId(_deleteCategoryRoute));
+
+    // === Phase G — Import image carte via Claude Vision ===
+    r.post('/api/menu/cards/import-image', _withAuth(_importMenuFromImage));
     r.get('/api/shopping/lists', _withAuth(_listShoppingLists));
     r.post('/api/shopping/items', _withAuth(_handleAddShoppingItem));
     r.post('/api/shopping/items/<id>/check', _withAuthId(_checkItem));
@@ -640,6 +660,7 @@ class BrApiRouter {
   // ==== Doc HTML statiques (servies depuis docs/) ====
   Future<Response> _serveDocsProduct(Request req) => _serveDocFile('docs/product.html');
   Future<Response> _serveDocsSchema(Request req) => _serveDocFile('docs/schema.html');
+  Future<Response> _serveDocsPresentation(Request req) => _serveDocFile('docs/presentation.html');
 
   Future<Response> _serveDocsIndex(Request req) async {
     return Response.ok(
@@ -655,7 +676,8 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
 <h1>Le Broc</h1>
 <p class="lead">Serveur Broccers — Puces du Canal, Villeurbanne</p>
 <p><strong style="color:#f5c842">App PWA :</strong> <a href="http://127.0.0.1:8766">http://127.0.0.1:8766</a> (Flutter Web)</p>
-<p><strong style="color:#f5c842">Documentation produit :</strong> <a href="/docs/product">/docs/product</a></p>
+<p><strong style="color:#f5c842">📖 Présentation fonctionnelle (pour les nuls) :</strong> <a href="/docs/presentation">/docs/presentation</a></p>
+<p><strong style="color:#f5c842">Documentation produit complète :</strong> <a href="/docs/product">/docs/product</a></p>
 <p><strong style="color:#f5c842">Schéma visuel :</strong> <a href="/docs/schema">/docs/schema</a></p>
 <p><strong style="color:#f5c842">API Health :</strong> <a href="/api/health">/api/health</a></p>
 <p style="margin-top:40px;font-size:11px;color:#7a6f63;font-family:monospace">v0.3.0-alpha · SG Framework · Tailscale only · zero cloud public</p>
@@ -841,7 +863,10 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
   }
 
   Future<Response> _listMenuCards(Request req) async {
-    final r = await _repo.listMenuCards(includeDrafts: true);
+    final kindStr = req.url.queryParameters['kind'];
+    SgMenuCardKind? kind;
+    if (kindStr != null) kind = SgMenuCardKind.fromName(kindStr);
+    final r = await _repo.listMenuCards(includeDrafts: true, kind: kind);
     return r.when(
       success: (l) => _json(200, {'cards': l.map((c) => c.toJson()).toList()}),
       failure: _failureResponse,
@@ -849,7 +874,10 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
   }
 
   Future<Response> _currentMenuCard(Request req) async {
-    final r = await _repo.getCurrentPublishedMenuCard();
+    final kindStr = req.url.queryParameters['kind'];
+    SgMenuCardKind? kind;
+    if (kindStr != null) kind = SgMenuCardKind.fromName(kindStr);
+    final r = await _repo.getCurrentPublishedMenuCard(kind: kind);
     return r.when(
       success: (c) =>
           c == null ? _json(404, {'error': 'no published card'}) : _json(200, c.toJson()),
@@ -857,9 +885,405 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
     );
   }
 
+  Future<Response> _getMenuCard(Request req, String id) async {
+    final r = await _repo.getMenuCard(id);
+    return r.when(
+      success: (c) => c == null ? _json(404, {'error': 'card not found'}) : _json(200, c.toJson()),
+      failure: _failureResponse,
+    );
+  }
+
+  Future<Response> _createMenuCard(Request req) async {
+    final body = await _readJson(req);
+    final name = body['name'] as String?;
+    if (name == null || name.trim().isEmpty) {
+      return _json(400, {'error': 'name required'});
+    }
+    final kindStr = body['kind'] as String?;
+    final kind = kindStr != null ? SgMenuCardKind.fromName(kindStr) : SgMenuCardKind.food;
+    final versionRes = await _repo.nextMenuCardVersion();
+    final version = versionRes.valueOrNull ?? 1;
+    final card = SgMenuCard(
+      id: 'card-${_idGenerator()}',
+      name: name.trim(),
+      version: version,
+      kind: kind,
+      createdAt: DateTime.now().toUtc(),
+      categories: const [],
+      items: const [],
+    );
+    final r = await _repo.createMenuCard(card);
+    return r.when(success: (c) => _json(201, c.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _updateMenuCardMeta(Request req, String id) async {
+    final body = await _readJson(req);
+    final cur = await _repo.getMenuCard(id);
+    final card = cur.valueOrNull;
+    if (card == null) return _json(404, {'error': 'card not found'});
+    final newKind = body['kind'] != null
+        ? SgMenuCardKind.fromName(body['kind'] as String)
+        : card.kind;
+    final updated = card.copyWith(
+      name: (body['name'] as String?) ?? card.name,
+      kind: newKind,
+    );
+    final r = await _repo.updateMenuCard(updated);
+    return r.when(success: (c) => _json(200, c.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _deleteMenuCard(Request req, String id) async {
+    final r = await _repo.deleteMenuCard(id);
+    return r.when(
+      success: (_) => _json(200, {'deleted': id}),
+      failure: _failureResponse,
+    );
+  }
+
   Future<Response> _publishMenuCard(Request req, String id) async {
     final r = await _publishMenu(cardId: id);
     return r.when(success: (c) => _json(200, c.toJson()), failure: _failureResponse);
+  }
+
+  // ============================================================================
+  // Phase G — Menu items CRUD
+  // ============================================================================
+  Future<Response> _createMenuItemRoute(Request req, String cardId) async {
+    final body = await _readJson(req);
+    final name = body['name'] as String?;
+    final categoryId = body['category_id'] as String?;
+    final priceCents = (body['price_cents'] as num?)?.toInt();
+    if (name == null || categoryId == null || priceCents == null) {
+      return _json(400, {'error': 'name + category_id + price_cents required'});
+    }
+    final allergens = ((body['allergens'] as List?) ?? const [])
+        .map((a) => SgAllergen.values.where((x) => x.name == a).firstOrNull)
+        .whereType<SgAllergen>()
+        .toSet();
+    final item = SgMenuItem(
+      id: 'mi-${_idGenerator()}',
+      cardId: cardId,
+      categoryId: categoryId,
+      name: name.trim(),
+      description: (body['description'] as String?)?.trim(),
+      priceCents: priceCents,
+      available: body['available'] as bool? ?? true,
+      allergens: allergens,
+      sortOrder: (body['sort_order'] as num?)?.toInt() ?? 0,
+    );
+    final r = await _repo.createMenuItem(item);
+    return r.when(success: (i) => _json(201, i.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _updateMenuItemRoute(Request req, String id) async {
+    final body = await _readJson(req);
+    final cur = await _repo.getMenuItem(id);
+    final item = cur.valueOrNull;
+    if (item == null) return _json(404, {'error': 'item not found'});
+    Set<SgAllergen>? allergens;
+    if (body['allergens'] != null) {
+      allergens = (body['allergens'] as List)
+          .map((a) => SgAllergen.values.where((x) => x.name == a).firstOrNull)
+          .whereType<SgAllergen>()
+          .toSet();
+    }
+    final updated = item.copyWith(
+      name: body['name'] as String? ?? item.name,
+      description: body['description'] as String? ?? item.description,
+      priceCents: (body['price_cents'] as num?)?.toInt() ?? item.priceCents,
+      categoryId: body['category_id'] as String? ?? item.categoryId,
+      available: body['available'] as bool? ?? item.available,
+      sortOrder: (body['sort_order'] as num?)?.toInt() ?? item.sortOrder,
+      allergens: allergens ?? item.allergens,
+      unavailableReason: body['unavailable_reason'] as String? ?? item.unavailableReason,
+    );
+    final r = await _repo.updateMenuItem(updated);
+    return r.when(success: (i) => _json(200, i.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _deleteMenuItemRoute(Request req, String id) async {
+    final r = await _repo.deleteMenuItem(id);
+    return r.when(
+      success: (_) => _json(200, {'deleted': id}),
+      failure: _failureResponse,
+    );
+  }
+
+  Future<Response> _reorderMenuItems(Request req) async {
+    final body = await _readJson(req);
+    final order = body['order'] as List<dynamic>?;
+    if (order == null) return _json(400, {'error': 'order list required'});
+    int sort = 0;
+    for (final id in order) {
+      final cur = await _repo.getMenuItem(id as String);
+      final it = cur.valueOrNull;
+      if (it != null) {
+        await _repo.updateMenuItem(it.copyWith(sortOrder: sort));
+      }
+      sort++;
+    }
+    return _json(200, {'reordered': order.length});
+  }
+
+  // ============================================================================
+  // Phase G — Menu categories CRUD
+  // ============================================================================
+  Future<Response> _createCategoryRoute(Request req, String cardId) async {
+    final body = await _readJson(req);
+    final name = body['name'] as String?;
+    if (name == null || name.trim().isEmpty) {
+      return _json(400, {'error': 'name required'});
+    }
+    final cat = SgMenuCategory(
+      id: 'cat-${_idGenerator()}',
+      cardId: cardId,
+      name: name.trim(),
+      sortOrder: (body['sort_order'] as num?)?.toInt() ?? 0,
+    );
+    final r = await _repo.createMenuCategory(cat);
+    return r.when(success: (c) => _json(201, c.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _updateCategoryRoute(Request req, String id) async {
+    final body = await _readJson(req);
+    final cardRes = await _repo.getMenuCard(body['card_id'] as String? ?? '');
+    final card = cardRes.valueOrNull;
+    if (card == null) return _json(400, {'error': 'card_id required'});
+    final cur = card.categories.where((c) => c.id == id).firstOrNull;
+    if (cur == null) return _json(404, {'error': 'category not found'});
+    final updated = SgMenuCategory(
+      id: cur.id,
+      cardId: cur.cardId,
+      name: body['name'] as String? ?? cur.name,
+      sortOrder: (body['sort_order'] as num?)?.toInt() ?? cur.sortOrder,
+    );
+    final r = await _repo.updateMenuCategory(updated);
+    return r.when(success: (c) => _json(200, c.toJson()), failure: _failureResponse);
+  }
+
+  Future<Response> _deleteCategoryRoute(Request req, String id) async {
+    final r = await _repo.deleteMenuCategory(id);
+    return r.when(
+      success: (_) => _json(200, {'deleted': id}),
+      failure: _failureResponse,
+    );
+  }
+
+  // ============================================================================
+  // Phase G — Import image carte via Claude Vision
+  // ============================================================================
+  Future<Response> _importMenuFromImage(Request req) async {
+    final ct = req.headers['content-type'] ?? '';
+    if (!ct.startsWith('multipart/form-data') &&
+        !ct.startsWith('application/octet-stream') &&
+        !ct.startsWith('image/')) {
+      return _json(400, {'error': 'multipart or image/* body required'});
+    }
+    final bytes = await req.read().expand((c) => c).toList();
+    if (bytes.isEmpty) return _json(400, {'error': 'empty body'});
+
+    // Strip simple multipart envelope if present (find image bytes between boundaries)
+    List<int> imageBytes;
+    final boundary = _extractBoundary(ct);
+    if (boundary != null) {
+      imageBytes = _extractImageFromMultipart(bytes, boundary);
+    } else {
+      imageBytes = bytes;
+    }
+
+    final tmpPath = '/tmp/broccers_import_${_idGenerator()}.jpg';
+    final tmpFile = File(tmpPath);
+    await tmpFile.writeAsBytes(imageBytes);
+
+    try {
+      final kindStr = req.url.queryParameters['kind'] ?? 'food';
+      final kind = SgMenuCardKind.fromName(kindStr);
+      final claudePath = Platform.environment['BR_CLAUDE_CLI_PATH'] ?? '/usr/local/bin/claude';
+      final prompt = '''
+Tu es un assistant qui extrait le contenu d'une carte de restaurant photographiée.
+Image: @$tmpPath
+
+Analyse cette photo de carte et retourne UNIQUEMENT un JSON valide (rien d'autre, pas de markdown), de la forme :
+{
+  "name": "Nom de la carte tel que vu sur l'image (ex: 'Carte des vins', 'Plats du jour')",
+  "categories": [
+    {"name": "Entrées", "sort_order": 0},
+    {"name": "Plats", "sort_order": 1}
+  ],
+  "items": [
+    {
+      "name": "Nom du plat",
+      "description": "Description si présente, sinon null",
+      "price_cents": 1200,
+      "category_name": "Entrées",
+      "allergens": ["gluten", "dairy"]
+    }
+  ]
+}
+
+Règles :
+- Prix en CENTIMES (12.50€ → 1250)
+- Allergènes parmi : gluten, dairy, eggs, fish, shellfish, crustaceans, mollusks, peanuts, treeNuts, soy, sesame, celery, mustard, sulfites, lupin
+- category_name doit correspondre exactement à un name de categories
+- Si tu vois plusieurs prix (S/M/L, demi/entier), prends le principal et note l'info en description
+- Si tu ne vois pas la carte clairement, retourne {"error": "image illisible"}
+- N'INVENTE PAS de plats. Si tu hésites, mets-le quand même mais marque la description "(à vérifier)"
+''';
+
+      final proc = await Process.run(claudePath, [
+        '-p', prompt,
+        '--add-dir', '/tmp',
+      ], workingDirectory: '/tmp');
+
+      if (proc.exitCode != 0) {
+        return _json(502, {
+          'error': 'claude CLI failed (exit ${proc.exitCode})',
+          'stderr': proc.stderr.toString().substring(0, proc.stderr.toString().length > 500 ? 500 : proc.stderr.toString().length),
+        });
+      }
+
+      final raw = proc.stdout.toString().trim();
+      // Try to extract JSON from response
+      String jsonStr = raw;
+      final jsonStart = raw.indexOf('{');
+      final jsonEnd = raw.lastIndexOf('}');
+      if (jsonStart >= 0 && jsonEnd > jsonStart) {
+        jsonStr = raw.substring(jsonStart, jsonEnd + 1);
+      }
+
+      Map<String, dynamic> parsed;
+      try {
+        parsed = jsonDecode(jsonStr) as Map<String, dynamic>;
+      } catch (e) {
+        return _json(502, {
+          'error': 'Claude n\'a pas retourné du JSON valide. Réessaie ou édite manuellement.',
+          'raw_response': raw.substring(0, raw.length > 500 ? 500 : raw.length),
+        });
+      }
+
+      if (parsed['error'] != null) {
+        return _json(422, {'error': parsed['error']});
+      }
+
+      // Build card draft
+      final versionRes = await _repo.nextMenuCardVersion();
+      final version = versionRes.valueOrNull ?? 1;
+      final cardId = 'card-${_idGenerator()}';
+      final cardName = (parsed['name'] as String?) ?? 'Carte importée';
+
+      final cats = ((parsed['categories'] as List?) ?? const []).map((c) {
+        final cm = c as Map<String, dynamic>;
+        return SgMenuCategory(
+          id: 'cat-${_idGenerator()}',
+          cardId: cardId,
+          name: cm['name'] as String,
+          sortOrder: (cm['sort_order'] as num?)?.toInt() ?? 0,
+        );
+      }).toList();
+      final catsByName = {for (final c in cats) c.name: c};
+
+      final items = ((parsed['items'] as List?) ?? const []).map((i) {
+        final im = i as Map<String, dynamic>;
+        final catName = im['category_name'] as String?;
+        final cat = catName != null ? catsByName[catName] : null;
+        final allergens = ((im['allergens'] as List?) ?? const [])
+            .map((a) => SgAllergen.values.where((x) => x.name == a).firstOrNull)
+            .whereType<SgAllergen>()
+            .toSet();
+        return SgMenuItem(
+          id: 'mi-${_idGenerator()}',
+          cardId: cardId,
+          categoryId: cat?.id ?? (cats.isNotEmpty ? cats.first.id : 'unknown'),
+          name: im['name'] as String,
+          description: im['description'] as String?,
+          priceCents: (im['price_cents'] as num?)?.toInt() ?? 0,
+          available: true,
+          allergens: allergens,
+          sortOrder: 0,
+        );
+      }).toList();
+
+      final card = SgMenuCard(
+        id: cardId,
+        name: cardName,
+        version: version,
+        kind: kind,
+        createdAt: DateTime.now().toUtc(),
+        categories: cats,
+        items: items,
+      );
+
+      final created = await _repo.createMenuCard(card);
+      return created.when(
+        success: (c) {
+          // Log event
+          _repo.logEvent(SgEventJournalEntry(
+            id: 'evt-${_idGenerator()}',
+            at: DateTime.now().toUtc(),
+            actor: 'system',
+            action: 'menu_card.imported_from_image',
+            target: 'card:${c.id}',
+            payload: {
+              'kind': kind.name,
+              'name': cardName,
+              'categories_count': cats.length,
+              'items_count': items.length,
+            },
+          ));
+          return _json(201, {
+            ...c.toJson(),
+            'meta': {
+              'imported_categories': cats.length,
+              'imported_items': items.length,
+              'next_step': 'Éditer manuellement via l\'éditeur de carte avant publication.',
+            },
+          });
+        },
+        failure: _failureResponse,
+      );
+    } finally {
+      try {
+        await tmpFile.delete();
+      } catch (_) {}
+    }
+  }
+
+  String? _extractBoundary(String contentType) {
+    final match = RegExp(r'boundary=([^;]+)').firstMatch(contentType);
+    return match?.group(1)?.replaceAll('"', '');
+  }
+
+  List<int> _extractImageFromMultipart(List<int> bytes, String boundary) {
+    final boundaryBytes = utf8.encode('--$boundary');
+    final delimiter = utf8.encode('\r\n\r\n');
+    int start = 0;
+    while (start < bytes.length) {
+      final boundaryIdx = _indexOf(bytes, boundaryBytes, start);
+      if (boundaryIdx < 0) break;
+      final headerEnd = _indexOf(bytes, delimiter, boundaryIdx);
+      if (headerEnd < 0) break;
+      final dataStart = headerEnd + delimiter.length;
+      final nextBoundary = _indexOf(bytes, boundaryBytes, dataStart);
+      if (nextBoundary < 0) return bytes.sublist(dataStart);
+      // Strip trailing CRLF
+      var dataEnd = nextBoundary;
+      if (dataEnd >= 2 && bytes[dataEnd - 2] == 13 && bytes[dataEnd - 1] == 10) {
+        dataEnd -= 2;
+      }
+      return bytes.sublist(dataStart, dataEnd);
+    }
+    return bytes;
+  }
+
+  int _indexOf(List<int> haystack, List<int> needle, int start) {
+    outer:
+    for (int i = start; i <= haystack.length - needle.length; i++) {
+      for (int j = 0; j < needle.length; j++) {
+        if (haystack[i + j] != needle[j]) continue outer;
+      }
+      return i;
+    }
+    return -1;
   }
 
   Future<Response> _downloadMenuCardPdf(Request req, String id) async {

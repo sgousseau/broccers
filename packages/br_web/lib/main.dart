@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import 'src/api.dart';
 import 'src/br_sg.dart';
+import 'src/menu_editor_screen.dart';
 import 'src/phase_f_screens.dart';
 
 const _apiBase = String.fromEnvironment(
@@ -317,7 +318,7 @@ class _HomeShellState extends State<HomeShell> {
     final screens = [
       PersonnelScreen(api: widget.api),
       KitchenScreen(api: widget.api),
-      MenuScreen(api: widget.api),
+      MenuListScreen(api: widget.api),
       ShoppingScreen(api: widget.api),
       QuestionScreen(api: widget.api),
       JournalScreen(api: widget.api),
@@ -2662,6 +2663,89 @@ class _KitchenScreenState extends State<KitchenScreen> {
     ));
   }
 
+  Future<void> _signalRupture() async {
+    final cardRes = await widget.api.get('/api/menu/cards/current');
+    if (!mounted) return;
+    Map<String, dynamic>? card;
+    cardRes.when(success: (d) => card = d, failure: (_) {});
+    if (card == null) {
+      _snack('Aucune carte publiée — ajoute des items via l\'onglet Carte d\'abord.', isError: true);
+      return;
+    }
+    final items = ((card!['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    if (items.isEmpty) {
+      _snack('La carte publiée est vide.', isError: true);
+      return;
+    }
+
+    final picked = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      backgroundColor: BrocBrand.brocBlack,
+      isScrollControlled: true,
+      builder: (sheetCtx) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        expand: false,
+        builder: (_, ctrl) => ListView(
+          controller: ctrl,
+          padding: const EdgeInsets.all(16),
+          children: [
+            const Row(children: [
+              Icon(Icons.no_food, color: BrocBrand.brocYellow),
+              SizedBox(width: 8),
+              Text('Quel plat est en rupture ?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ]),
+            const SizedBox(height: 12),
+            for (final it in items.where((i) => i['available'] as bool? ?? true))
+              ListTile(
+                title: Text(it['name'] as String),
+                subtitle: Text(
+                  '${((it['price_cents'] as int) / 100).toStringAsFixed(2)} €',
+                  style: const TextStyle(fontSize: 11, color: Colors.grey),
+                ),
+                trailing: const Icon(Icons.chevron_right, color: BrocBrand.brocRed),
+                onTap: () => Navigator.pop(sheetCtx, it),
+              ),
+          ],
+        ),
+      ),
+    );
+    if (picked == null) return;
+    final reasonCtrl = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('${picked['name']} — pourquoi en rupture ?'),
+        content: TextField(
+          controller: reasonCtrl,
+          autofocus: true,
+          decoration: const InputDecoration(
+            hintText: 'ex: plus de saumon, livraison demain',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, null), child: const Text('Annuler')),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, reasonCtrl.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: BrocBrand.brocRed),
+            child: const Text('Signaler'),
+          ),
+        ],
+      ),
+    );
+    if (reason == null) return;
+    final r = await widget.api.post(
+      '/api/menu/items/${picked['id']}/availability',
+      {'available': false, 'reason': reason, 'actor': 'cook'},
+    );
+    if (!mounted) return;
+    r.when(
+      success: (_) => _snack('${picked['name']} en rupture. Carte client mise à jour.'),
+      failure: (e) => _snack(e.message, isError: true),
+    );
+  }
+
   Future<void> _newVoiceOrder() async {
     final textCtrl = TextEditingController();
     final tableCtrl = TextEditingController();
@@ -2905,12 +2989,27 @@ class _KitchenScreenState extends State<KitchenScreen> {
     final activeTasks = _tasks.where((t) => t['status'] == 'inProgress').toList();
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _newVoiceOrder,
-        icon: const Icon(Icons.mic),
-        label: const Text('Nouvelle commande vocale'),
-        backgroundColor: BrocBrand.brocRed,
-        foregroundColor: BrocBrand.brocCream,
+      floatingActionButton: Column(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          FloatingActionButton.small(
+            heroTag: 'kitchen-86',
+            onPressed: _signalRupture,
+            tooltip: 'Signaler une rupture (Mode 86)',
+            backgroundColor: BrocBrand.brocYellow,
+            foregroundColor: BrocBrand.brocBlack,
+            child: const Icon(Icons.no_food),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'kitchen-voice',
+            onPressed: _newVoiceOrder,
+            icon: const Icon(Icons.mic),
+            label: const Text('Nouvelle commande vocale'),
+            backgroundColor: BrocBrand.brocRed,
+            foregroundColor: BrocBrand.brocCream,
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())

@@ -1,5 +1,6 @@
 import 'package:meta/meta.dart';
 
+import 'sg_menu_card_kind.dart';
 import 'sg_menu_category.dart';
 import 'sg_menu_item.dart';
 
@@ -8,6 +9,7 @@ class SgMenuCard {
   final String id;
   final String name;
   final int version;
+  final SgMenuCardKind kind;
   final DateTime createdAt;
   final DateTime? publishedAt;
   final List<SgMenuCategory> categories;
@@ -20,6 +22,7 @@ class SgMenuCard {
     required this.createdAt,
     required this.categories,
     required this.items,
+    this.kind = SgMenuCardKind.food,
     this.publishedAt,
   });
 
@@ -43,6 +46,7 @@ class SgMenuCard {
     String? id,
     String? name,
     int? version,
+    SgMenuCardKind? kind,
     DateTime? createdAt,
     DateTime? publishedAt,
     List<SgMenuCategory>? categories,
@@ -52,6 +56,7 @@ class SgMenuCard {
         id: id ?? this.id,
         name: name ?? this.name,
         version: version ?? this.version,
+        kind: kind ?? this.kind,
         createdAt: createdAt ?? this.createdAt,
         publishedAt: publishedAt ?? this.publishedAt,
         categories: categories ?? this.categories,
@@ -62,6 +67,8 @@ class SgMenuCard {
         'id': id,
         'name': name,
         'version': version,
+        'kind': kind.name,
+        'kind_label': kind.label,
         'created_at': createdAt.toIso8601String(),
         if (publishedAt != null) 'published_at': publishedAt!.toIso8601String(),
         'categories': categories.map((c) => c.toJson()).toList(),
@@ -72,6 +79,9 @@ class SgMenuCard {
         id: json['id'] as String,
         name: json['name'] as String,
         version: json['version'] as int,
+        kind: json['kind'] != null
+            ? SgMenuCardKind.fromName(json['kind'] as String)
+            : SgMenuCardKind.food,
         createdAt: DateTime.parse(json['created_at'] as String),
         publishedAt: json['published_at'] != null
             ? DateTime.parse(json['published_at'] as String)

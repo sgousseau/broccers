@@ -64,6 +64,38 @@ class BrWebApi {
   Future<Result<Map<String, dynamic>, SgFailure>> delete(String path) =>
       _req('DELETE', path, null);
 
+  /// POST with raw bytes (image upload, etc.).
+  Future<Result<Map<String, dynamic>, SgFailure>> postRaw(
+    String path,
+    List<int> body, {
+    String contentType = 'application/octet-stream',
+  }) async {
+    if (!isAuthenticated) {
+      return const Failure(SgBrocAuthFailure('not authenticated'));
+    }
+    try {
+      final resp = await _http.post(
+        baseUrl.resolve(path),
+        headers: {
+          'authorization': 'Bearer $_jwt',
+          'content-type': contentType,
+        },
+        body: body,
+      );
+      if (resp.statusCode == 401) {
+        await logout();
+        return const Failure(SgBrocAuthFailure('session expired'));
+      }
+      if (resp.statusCode >= 400) {
+        return Failure(SgNetworkFailure('HTTP ${resp.statusCode}: ${resp.body}'));
+      }
+      if (resp.body.isEmpty) return const Success({});
+      return Success(jsonDecode(resp.body) as Map<String, dynamic>);
+    } catch (e) {
+      return Failure(SgNetworkFailure('postRaw failed', cause: e));
+    }
+  }
+
   /// Exécute une commande TestControlServer (sans auth car pas requis).
   Future<Result<Map<String, dynamic>, SgFailure>> command(String cmd) async {
     try {

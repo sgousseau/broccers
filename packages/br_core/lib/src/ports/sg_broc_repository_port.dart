@@ -8,6 +8,9 @@ import '../entities/sg_ingredient.dart';
 import '../entities/sg_kiosk_session.dart';
 import '../entities/sg_kitchen_ticket.dart';
 import '../entities/sg_menu_card.dart';
+import '../entities/sg_menu_card_kind.dart';
+import '../entities/sg_menu_category.dart';
+import '../entities/sg_menu_item.dart';
 import '../entities/sg_onboarding_checklist.dart';
 import '../entities/sg_pdf_export.dart';
 import '../entities/sg_question.dart';
@@ -55,10 +58,22 @@ abstract interface class SgBrocRepositoryPort {
   // ============== Menu cards / items / categories ==============
   Future<Result<SgMenuCard, SgFailure>> createMenuCard(SgMenuCard card);
   Future<Result<SgMenuCard, SgFailure>> updateMenuCard(SgMenuCard card);
+  Future<Result<void, SgFailure>> deleteMenuCard(String id);
   Future<Result<SgMenuCard?, SgFailure>> getMenuCard(String id);
-  Future<Result<SgMenuCard?, SgFailure>> getCurrentPublishedMenuCard();
-  Future<Result<List<SgMenuCard>, SgFailure>> listMenuCards({bool includeDrafts = false});
+  Future<Result<SgMenuCard?, SgFailure>> getCurrentPublishedMenuCard({SgMenuCardKind? kind});
+  Future<Result<List<SgMenuCard>, SgFailure>> listMenuCards({bool includeDrafts = false, SgMenuCardKind? kind});
   Future<Result<int, SgFailure>> nextMenuCardVersion();
+
+  // ============== Menu items CRUD (Phase G — éditeur) ==============
+  Future<Result<SgMenuItem, SgFailure>> createMenuItem(SgMenuItem item);
+  Future<Result<SgMenuItem, SgFailure>> updateMenuItem(SgMenuItem item);
+  Future<Result<void, SgFailure>> deleteMenuItem(String id);
+  Future<Result<SgMenuItem?, SgFailure>> getMenuItem(String id);
+
+  // ============== Menu categories CRUD (Phase G — éditeur) ==============
+  Future<Result<SgMenuCategory, SgFailure>> createMenuCategory(SgMenuCategory cat);
+  Future<Result<SgMenuCategory, SgFailure>> updateMenuCategory(SgMenuCategory cat);
+  Future<Result<void, SgFailure>> deleteMenuCategory(String id);
 
   // ============== PDF exports ==============
   Future<Result<void, SgFailure>> storePdfExport(SgPdfExport export);

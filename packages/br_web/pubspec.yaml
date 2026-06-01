@@ -1,6 +1,6 @@
 name: br_web
 description: Broccers — Frontend Flutter Web (PWA). MIGRATE LATER to sg_ui.
-version: 0.1.0
+version: 0.7.0
 publish_to: none
 
 resolution: workspace
@@ -16,6 +16,8 @@ dependencies:
     path: ../br_core
   http: ^1.2.2
   shared_preferences: ^2.3.0
+  qr_flutter: ^4.1.0
+  file_picker: ^8.0.0
 
 dev_dependencies:
   flutter_test:

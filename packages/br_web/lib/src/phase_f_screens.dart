@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../main.dart' show BrocBrand, translateErrorFr;
 import 'api.dart';
@@ -850,8 +851,6 @@ class _TablesScreenState extends State<TablesScreen> {
 
   Future<void> _showQrFor(Map<String, dynamic> t) async {
     final url = t['public_menu_url'] as String;
-    final qrSrc =
-        'https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${Uri.encodeComponent(url)}';
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
@@ -866,25 +865,20 @@ class _TablesScreenState extends State<TablesScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(8),
+                padding: const EdgeInsets.all(12),
                 color: Colors.white,
-                child: Image.network(
-                  qrSrc,
-                  width: 280,
-                  height: 280,
-                  errorBuilder: (_, _, _) => Container(
-                    width: 280,
-                    height: 280,
-                    color: Colors.grey.shade200,
-                    alignment: Alignment.center,
-                    child: const Padding(
-                      padding: EdgeInsets.all(20),
-                      child: Text(
-                        'QR non rendu hors-ligne.\nCopiez l\'URL et générez via une app QR locale.',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.black54, fontSize: 12),
-                      ),
-                    ),
+                child: QrImageView(
+                  data: url,
+                  version: QrVersions.auto,
+                  size: 280,
+                  errorCorrectionLevel: QrErrorCorrectLevel.M,
+                  eyeStyle: const QrEyeStyle(
+                    eyeShape: QrEyeShape.square,
+                    color: BrocBrand.brocRed,
+                  ),
+                  dataModuleStyle: const QrDataModuleStyle(
+                    dataModuleShape: QrDataModuleShape.square,
+                    color: Colors.black,
                   ),
                 ),
               ),

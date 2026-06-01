@@ -1,0 +1,657 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broccers — Présentation fonctionnelle</title>
+<style>
+  :root {
+    --broc-red: #c72226;
+    --broc-yellow: #f5c842;
+    --broc-cream: #f5ebd6;
+    --broc-black: #14100f;
+    --soft: #2a221e;
+    --grey: #b5a89a;
+    --muted: #7a6f63;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--broc-black);
+    color: var(--broc-cream);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.65;
+  }
+  .hero {
+    background: linear-gradient(135deg, var(--broc-red) 0%, #8a181b 100%);
+    padding: 80px 24px 60px;
+    text-align: center;
+  }
+  .hero .brand {
+    display: inline-block;
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+  .hero h1 {
+    font-size: 4rem;
+    margin: 0 0 12px;
+    font-weight: 900;
+    letter-spacing: -2px;
+  }
+  .hero .tag {
+    font-size: 1.3rem;
+    color: var(--broc-cream);
+    opacity: 0.9;
+    max-width: 720px;
+    margin: 0 auto;
+  }
+  .hero .sub {
+    margin-top: 24px;
+    font-size: 0.9rem;
+    color: rgba(255,255,255,0.7);
+    font-style: italic;
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 60px 24px;
+  }
+  h2 {
+    font-size: 2rem;
+    color: var(--broc-yellow);
+    border-bottom: 3px solid var(--broc-red);
+    padding-bottom: 10px;
+    margin: 0 0 24px;
+  }
+  h2 .num {
+    color: var(--broc-red);
+    font-family: 'SF Mono', monospace;
+    font-size: 1.5rem;
+    margin-right: 12px;
+  }
+  h3 {
+    color: var(--broc-cream);
+    font-size: 1.3rem;
+    margin: 24px 0 10px;
+  }
+  .lead {
+    color: var(--grey);
+    font-size: 1.1rem;
+    margin-bottom: 32px;
+    font-style: italic;
+  }
+  section { padding: 30px 0; }
+  section:nth-of-type(even) {
+    background: rgba(199, 34, 38, 0.04);
+  }
+  .grid {
+    display: grid;
+    gap: 20px;
+    margin: 30px 0;
+  }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .card {
+    background: rgba(245, 235, 214, 0.04);
+    border: 1px solid rgba(245, 235, 214, 0.1);
+    border-radius: 10px;
+    padding: 22px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: var(--broc-yellow); }
+  .card .icon {
+    font-size: 2rem;
+    margin-bottom: 8px;
+    display: block;
+  }
+  .card h4 {
+    color: var(--broc-yellow);
+    margin: 0 0 8px;
+    font-size: 1.15rem;
+  }
+  .card p {
+    color: var(--grey);
+    margin: 0;
+    font-size: 0.95rem;
+  }
+  .quote {
+    background: rgba(245, 200, 66, 0.07);
+    border-left: 4px solid var(--broc-yellow);
+    padding: 18px 22px;
+    margin: 20px 0;
+    font-style: italic;
+    border-radius: 0 6px 6px 0;
+  }
+  .quote strong { color: var(--broc-yellow); font-style: normal; }
+  ul {
+    padding-left: 22px;
+  }
+  ul li {
+    margin: 8px 0;
+    color: var(--broc-cream);
+  }
+  ul li strong { color: var(--broc-yellow); }
+  .benefit {
+    background: rgba(34, 197, 94, 0.1);
+    border-left: 4px solid #4ade80;
+    padding: 14px 18px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+    color: #d1fae5;
+  }
+  .benefit strong { color: #4ade80; }
+  .pain {
+    background: rgba(199, 34, 38, 0.12);
+    border-left: 4px solid var(--broc-red);
+    padding: 14px 18px;
+    margin: 14px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .pain strong { color: #fca5a5; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0;
+    font-size: 0.95rem;
+  }
+  th, td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--soft);
+  }
+  th {
+    background: rgba(199, 34, 38, 0.15);
+    color: var(--broc-yellow);
+    font-weight: 700;
+  }
+  td:first-child { font-weight: 600; color: var(--broc-cream); }
+  .scenario {
+    background: var(--soft);
+    border-radius: 10px;
+    padding: 24px;
+    margin: 20px 0;
+  }
+  .scenario .role {
+    display: inline-block;
+    background: var(--broc-red);
+    color: var(--broc-cream);
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .scenario h4 {
+    color: var(--broc-yellow);
+    margin: 0 0 10px;
+  }
+  .scenario .steps {
+    counter-reset: step;
+    list-style: none;
+    padding: 0;
+  }
+  .scenario .steps li {
+    counter-increment: step;
+    padding-left: 36px;
+    position: relative;
+    margin: 12px 0;
+  }
+  .scenario .steps li::before {
+    content: counter(step);
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    font-weight: 900;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+  }
+  .stat-block {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin: 30px 0;
+  }
+  .stat {
+    background: rgba(245, 235, 214, 0.05);
+    border-radius: 10px;
+    padding: 22px;
+    text-align: center;
+  }
+  .stat .n {
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: var(--broc-yellow);
+    line-height: 1;
+  }
+  .stat .l {
+    font-size: 0.8rem;
+    color: var(--grey);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .pillar {
+    display: grid;
+    grid-template-columns: 60px 1fr;
+    gap: 16px;
+    margin: 14px 0;
+    align-items: start;
+  }
+  .pillar .num-pill {
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 1.3rem;
+  }
+  footer {
+    background: var(--broc-black);
+    padding: 40px 24px;
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    border-top: 1px solid var(--soft);
+  }
+  .badge-new {
+    background: #4ade80;
+    color: var(--broc-black);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    letter-spacing: 1px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  @media (max-width: 600px) {
+    .hero h1 { font-size: 2.5rem; }
+    .hero .tag { font-size: 1rem; }
+    h2 { font-size: 1.5rem; }
+    .wrap { padding: 40px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="brand">BROCCERS</div>
+  <h1>Piloter une brasserie sans rien laisser au hasard.</h1>
+  <p class="tag">
+    Le logiciel pensé pour Le Broc — Puces du Canal, Villeurbanne.
+    Personnel, carte, cuisine, achats, marges, gaspillage : tout dans une seule app.
+  </p>
+  <p class="sub">Document destiné à présentation fonctionnelle · juin 2026</p>
+</div>
+
+<!-- ============= LE PROBLÈME ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">01</span> Le problème qu'on règle</h2>
+  <p class="lead">Dans une brasserie, le manager doit jongler avec dix sujets en même temps. Quand il s'absente, tout s'arrête. Quand il s'arrête, c'est de l'argent perdu.</p>
+
+  <div class="grid grid-2">
+    <div class="pain">
+      <strong>« Le saumon est en rupture. »</strong><br>
+      La cuisine prévient le bar. Le bar oublie de prévenir la salle. Trois serveurs continuent de proposer le plat. Trois clients déçus, trois excuses, et un plat à recréer en urgence.
+    </div>
+    <div class="pain">
+      <strong>« Combien on a perdu en jetant ces 20 brochettes ? »</strong><br>
+      Personne ne sait. Personne ne note. À la fin du mois on regarde les comptes et c'est trop tard pour comprendre.
+    </div>
+    <div class="pain">
+      <strong>« Le nouveau serveur ne connaît pas la carte. »</strong><br>
+      Le manager n'est pas là pour le briefer. Il propose ce qu'il croit savoir. Il manque les ventes de la promo du jour.
+    </div>
+    <div class="pain">
+      <strong>« On change le menu, qui ré-imprime la carte ? »</strong><br>
+      On modifie 3 prix sur Word, on perd la mise en page, on demande à un graphiste, on attend 2 jours, on imprime, on découvre qu'il y a une faute.
+    </div>
+    <div class="pain">
+      <strong>« Le marché a augmenté de 30 %. Notre marge ? »</strong><br>
+      Aucune idée. On découvre en fin de mois que tel plat ne rapporte plus rien — depuis trois semaines.
+    </div>
+    <div class="pain">
+      <strong>« Qui a fait quoi, à quelle heure ? »</strong><br>
+      Pas de traçabilité. Quand un employé conteste son temps de travail, on n'a aucune preuve.
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============= CE QUE FAIT BROCCERS ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">02</span> Ce que fait Broccers, en clair</h2>
+  <p class="lead">Une application web, accessible depuis n'importe quel device (téléphone, tablette, ordinateur), qui couvre tout le cycle d'exploitation. Pas besoin d'installer quoi que ce soit.</p>
+
+  <div class="grid grid-3">
+    <div class="card">
+      <span class="icon">👥</span>
+      <h4>Personnel</h4>
+      <p>Gestion de l'équipe : qui est en service, qui est en pause, qui est en repos. Pointage simple. Planning hebdo. Onboarding guidé pour les nouveaux.</p>
+    </div>
+    <div class="card">
+      <span class="icon">📖</span>
+      <h4>Éditeur de cartes</h4>
+      <p>Plusieurs cartes possibles : plats, vins, boissons, desserts, menus. Modifications en quelques clics. Génération d'un PDF A4 imprimable. <strong>Photo d'une carte → contenu extrait automatiquement.</strong></p>
+    </div>
+    <div class="card">
+      <span class="icon">🍳</span>
+      <h4>Cuisine connectée</h4>
+      <p>Le serveur dicte la commande, l'IA la transcrit en ticket structuré. La cuisine voit ses tâches en temps réel. Plus de papier qui se perd.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🛒</span>
+      <h4>Liste de courses</h4>
+      <p>Liste organisée par fournisseur, items à cocher, marquage urgent. Tout le monde voit la même liste.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🚫</span>
+      <h4>Ruptures en temps réel</h4>
+      <p>La cuisine clique « plus de saumon ». La carte se met à jour partout instantanément : sur les tablettes des serveurs, sur le QR client.</p>
+    </div>
+    <div class="card">
+      <span class="icon">📱</span>
+      <h4>QR sur table</h4>
+      <p>Chaque table a un QR code unique. Le client scanne, voit la carte du jour, voit ce qui est dispo. Pas de carte papier à manipuler.</p>
+    </div>
+    <div class="card">
+      <span class="icon">💶</span>
+      <h4>Marges & coûts</h4>
+      <p>On définit le prix d'achat des ingrédients, l'app calcule la marge de chaque plat en temps réel. Code couleur ROUGE/JAUNE/VERT pour identifier les plats à problème.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🗑️</span>
+      <h4>Suivi du gaspillage</h4>
+      <p>Tout ce qu'on jette est noté en 5 secondes avec la raison. À la fin de la semaine on voit où on perd de l'argent et pourquoi.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🤖</span>
+      <h4>Assistant IA</h4>
+      <p>Briefing matinal automatique. Question libre à l'IA sur la carte, les courses, l'historique. Réponse en français immédiate.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============= 4 PILIERS ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">03</span> Les 4 piliers</h2>
+  <p class="lead">Toute la valeur du logiciel tient en 4 promesses simples.</p>
+
+  <div class="pillar">
+    <div class="num-pill">1</div>
+    <div>
+      <h3>Une seule source de vérité</h3>
+      <p>La carte affichée au client, vue par le serveur sur son téléphone, et imprimée en cuisine sont <strong>strictement identiques</strong>. Si la cuisine signale une rupture, c'est mis à jour partout en moins de 2 secondes.</p>
+    </div>
+  </div>
+
+  <div class="pillar">
+    <div class="num-pill">2</div>
+    <div>
+      <h3>Rien n'est perdu</h3>
+      <p>Chaque action est tracée (qui, quoi, quand, pourquoi). Pas pour fliquer — <strong>pour comprendre et améliorer</strong>. Quand un employé conteste un horaire, on a la preuve. Quand un manager veut savoir pourquoi un plat ne marche pas, on a les données.</p>
+    </div>
+  </div>
+
+  <div class="pillar">
+    <div class="num-pill">3</div>
+    <div>
+      <h3>L'IA travaille pour vous</h3>
+      <p>Photo d'une carte → contenu extrait. Dictée vocale → ticket structuré. Question en français → réponse immédiate. Pas besoin de remplir des formulaires interminables, l'IA fait le travail répétitif.</p>
+    </div>
+  </div>
+
+  <div class="pillar">
+    <div class="num-pill">4</div>
+    <div>
+      <h3>Sans cloud externe</h3>
+      <p>Tout tourne sur le Mac Studio du restaurant via le réseau privé Tailscale. Aucune donnée ne sort. Pas d'abonnement mensuel à un éditeur tiers. <strong>Le restaurant garde le contrôle.</strong></p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============= 6 SCÉNARIOS ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">04</span> 6 scénarios concrets</h2>
+  <p class="lead">Comment ça se passe au quotidien, pour les vrais utilisateurs.</p>
+
+  <div class="scenario">
+    <span class="role">CUISINIER</span>
+    <h4>🚫 Signaler une rupture</h4>
+    <ol class="steps">
+      <li>Il manque du saumon. Le cuisinier ouvre l'app sur la tablette de la cuisine.</li>
+      <li>Onglet « Cuisine » → bouton « Signaler rupture ».</li>
+      <li>Il tape « Saumon mariné », précise la raison (« plus de stock, livraison demain matin »).</li>
+      <li>La carte est mise à jour <strong>immédiatement</strong> chez tous les serveurs et sur le QR des tables.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> zéro client déçu, zéro plat à recréer à la dernière minute.</div>
+  </div>
+
+  <div class="scenario">
+    <span class="role">MANAGER</span>
+    <h4>📸 Importer une carte depuis une photo</h4>
+    <ol class="steps">
+      <li>Le manager prend en photo une carte (sa propre maquette ou un visuel reçu).</li>
+      <li>Onglet « Carte » → bouton « Importer depuis photo ».</li>
+      <li>L'IA analyse l'image et extrait les catégories, plats, prix, descriptions.</li>
+      <li>Le manager relit, ajuste ce qui est imprécis, ajoute les allergènes, et publie.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> ~30 minutes économisées par carte, pas besoin de graphiste pour une mise à jour.</div>
+  </div>
+
+  <div class="scenario">
+    <span class="role">SERVEUR</span>
+    <h4>🎙️ Prendre une commande à la voix</h4>
+    <ol class="steps">
+      <li>Le serveur prend la commande au stylo (ou dans sa tête).</li>
+      <li>Il ouvre l'app, dicte : « Table 7, deux ricards, une entrecôte saignante avec frites, un magret rosé sans gratin ».</li>
+      <li>L'IA transforme ça en ticket structuré : 4 items + modificateurs, ciblé table 7.</li>
+      <li>Le serveur valide d'un clic → envoyé en cuisine instantanément.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> -80 % d'erreurs de transcription par rapport au papier, vitesse multipliée par 3.</div>
+  </div>
+
+  <div class="scenario">
+    <span class="role">CLIENT</span>
+    <h4>📱 Consulter la carte au QR de la table</h4>
+    <ol class="steps">
+      <li>Le client s'installe à la table 5. Un QR code discret sur la table.</li>
+      <li>Il scanne avec son téléphone (sans installer d'app, ouvre Safari ou Chrome).</li>
+      <li>La carte du jour s'affiche en design Broc : plats, prix, allergènes, photos optionnelles.</li>
+      <li>Les plats en rupture sont <strong>barrés et marqués « EN RUPTURE »</strong>.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> moins de cartes papier, mise à jour instantanée, expérience client moderne.</div>
+  </div>
+
+  <div class="scenario">
+    <span class="role">MANAGER</span>
+    <h4>🗑️ Comprendre les pertes de la semaine</h4>
+    <ol class="steps">
+      <li>Onglet « Pertes » : total de la semaine = 87 € jetés.</li>
+      <li>Breakdown par raison : 45 € en production non écoulée, 28 € en péremption, 14 € en perte préparation.</li>
+      <li>Breakdown par jour : pic le mardi (jour de faible affluence).</li>
+      <li>Décision : réduire la production des plats du mardi de 20 %.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> visibilité immédiate sur les pertes, décisions data-driven plutôt qu'au feeling.</div>
+  </div>
+
+  <div class="scenario">
+    <span class="role">SUPER-ADMIN</span>
+    <h4>⚙️ Ajuster les seuils de marge</h4>
+    <ol class="steps">
+      <li>Le contexte économique change : charges en hausse, coûts matières en hausse.</li>
+      <li>Onglet « Paramètres » → catégorie « Marges ».</li>
+      <li>Seuil ROUGE (marge critique) passé de 60 % à 65 %.</li>
+      <li>Tous les plats à marge inférieure à 65 % apparaissent désormais en rouge — alerte visuelle pour décider d'augmenter le prix ou de changer le fournisseur.</li>
+    </ol>
+    <div class="benefit"><strong>Gain :</strong> l'app s'adapte à la conjoncture, pas figée sur des seuils universels.</div>
+  </div>
+</div>
+</section>
+
+<!-- ============= ÉCRANS ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">05</span> Les 10 espaces de travail</h2>
+  <p class="lead">L'application est organisée en 10 onglets accessibles depuis le bas de l'écran.</p>
+
+  <table>
+    <thead>
+      <tr><th>Espace</th><th>Pour qui</th><th>À quoi ça sert</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>👥 Personnel</td><td>Manager + employés</td><td>Voir qui est en service, démarrer/finir son service, prendre une pause, changer de rôle en cours de shift</td></tr>
+      <tr><td>🍳 Cuisine</td><td>Cuisiniers + serveurs</td><td>Tickets actifs en cuisine, état des préparations, dictée vocale de nouvelles commandes, signaler une rupture</td></tr>
+      <tr><td>📖 Carte</td><td>Manager</td><td>Créer/éditer/publier toutes les cartes (plats, vins, desserts, etc.), importer depuis une photo, générer le PDF A4</td></tr>
+      <tr><td>🛒 Courses</td><td>Manager + cuisiniers</td><td>Listes par fournisseur, items à cocher, urgences</td></tr>
+      <tr><td>🤖 Question</td><td>Tout le monde</td><td>Poser n'importe quelle question à l'IA sur la carte ou les courses du jour</td></tr>
+      <tr><td>📋 Journal</td><td>Manager</td><td>Voir tout ce qui s'est passé (actions, modifications, alertes) avec filtres</td></tr>
+      <tr><td>💶 Coûts</td><td>Manager</td><td>Taux horaires des employés, consommations staff, pourboires, heatmap d'activité sur 7 jours</td></tr>
+      <tr><td>🗑️ Pertes <span class="badge-new">NEW</span></td><td>Manager + cuisiniers</td><td>Déclarer ce qui est jeté, voir le total de la semaine, comprendre par raison/jour</td></tr>
+      <tr><td>📱 Tables <span class="badge-new">NEW</span></td><td>Manager</td><td>Créer les tables, afficher leur QR code unique, l'imprimer, le régénérer si besoin</td></tr>
+      <tr><td>⚙️ Paramètres <span class="badge-new">NEW</span></td><td>Manager uniquement</td><td>Ajuster les seuils de marge, les pauses légales, les charges, les options vocales</td></tr>
+    </tbody>
+  </table>
+</div>
+</section>
+
+<!-- ============= STATS ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">06</span> Ce qui est déjà construit</h2>
+  <p class="lead">Le logiciel n'est pas une promesse — il est opérationnel.</p>
+
+  <div class="stat-block">
+    <div class="stat"><div class="n">10</div><div class="l">Espaces UI</div></div>
+    <div class="stat"><div class="n">7</div><div class="l">Phases livrées (A → G)</div></div>
+    <div class="stat"><div class="n">50+</div><div class="l">Routes API</div></div>
+    <div class="stat"><div class="n">100%</div><div class="l">Architecture SG conforme</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">Dépendance cloud externe</div></div>
+    <div class="stat"><div class="n">FR</div><div class="l">Pause légale Art. L.3121-16 respectée</div></div>
+  </div>
+
+  <h3>Différenciants techniques (en clair)</h3>
+  <ul>
+    <li><strong>Application web responsive</strong> — fonctionne sur téléphone, tablette, ordinateur, sans rien installer.</li>
+    <li><strong>Imprimable PDF A4</strong> — chaque carte est exportable en PDF prêt à imprimer, allergènes INCO conformes.</li>
+    <li><strong>QR codes intégrés</strong> — un par table, rendu côté navigateur (zéro service externe).</li>
+    <li><strong>IA multi-tâches</strong> — vision (photo → carte), transcription (voix → ticket), question/réponse, briefing matinal.</li>
+    <li><strong>Audit complet</strong> — chaque action enregistrée avec acteur + raison, dispo pour analyse.</li>
+    <li><strong>Évolutif</strong> — les seuils, les rôles, les types de carte sont paramétrables sans coder.</li>
+  </ul>
+</div>
+</section>
+
+<!-- ============= PHILOSOPHIE ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">07</span> Philosophie produit</h2>
+  <p class="lead">Quelques choix qu'on a faits exprès, et pourquoi.</p>
+
+  <div class="quote">
+    <strong>Observability bienveillante.</strong><br>
+    Le journal d'audit existe pour <em>comprendre et améliorer</em>, jamais pour réprimander. Les alertes vont au manager, jamais directement à l'employé. Toute formulation est hypothétique (« semble », « peut-être »).
+  </div>
+
+  <div class="quote">
+    <strong>Pas de superflu.</strong><br>
+    Chaque fonctionnalité doit résoudre un vrai problème opérationnel. Pas de gadget. Pas d'animation. Pas de demande d'autorisation systématique.
+  </div>
+
+  <div class="quote">
+    <strong>Le restaurant reste maître de ses données.</strong><br>
+    Tout est local sur la machine du restaurant. Pas d'abonnement SaaS qui grossit avec le chiffre d'affaires. Pas de risque de couper en cas de panne internet.
+  </div>
+
+  <div class="quote">
+    <strong>L'humain au-dessus de la machine.</strong><br>
+    L'IA propose, l'humain décide. Aucune action critique (publication, changement de prix, déclaration de perte) n'est faite sans validation explicite.
+  </div>
+</div>
+</section>
+
+<!-- ============= À VENIR ============= -->
+<section>
+<div class="wrap">
+  <h2><span class="num">08</span> À l'horizon</h2>
+  <p class="lead">Ce qui est conceptualisé et viendra naturellement dans les prochaines phases.</p>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <span class="icon">📷</span>
+      <h4>Caméras connectées (Phase H)</h4>
+      <p>Accessibles uniquement aux managers. Pas de surveillance employés — sécurité du local et vérification visuelle de service à distance.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🛒</span>
+      <h4>Commande au QR</h4>
+      <p>Aujourd'hui le QR sert à consulter. Demain le client pourra commander directement depuis son téléphone (avec validation serveur).</p>
+    </div>
+    <div class="card">
+      <span class="icon">📊</span>
+      <h4>Tableau de bord financier</h4>
+      <p>Marge mensuelle, comparatifs, alertes sur les plats qui ne tournent plus, projections.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🍷</span>
+      <h4>Suggestions IA</h4>
+      <p>L'IA propose les accords mets-vins, les plats du jour selon le stock, les promos selon le jour de la semaine.</p>
+    </div>
+    <div class="card">
+      <span class="icon">📞</span>
+      <h4>Réservations</h4>
+      <p>Gestion des réservations en ligne + au téléphone. Vue planning par service.</p>
+    </div>
+    <div class="card">
+      <span class="icon">🎓</span>
+      <h4>Onboarding intelligent</h4>
+      <p>Aujourd'hui : checklist auto-générée. Demain : tuteur IA pour les nouveaux serveurs (formation sur la carte, jeu de rôle client).</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ============= CONTACT ============= -->
+<section>
+<div class="wrap" style="text-align:center;">
+  <h2 style="border:none;"><span class="num">09</span> Pour en savoir plus</h2>
+  <p class="lead">Démonstration live disponible. Documentation technique fournie séparément.</p>
+  <p style="font-size:1.1rem; color: var(--broc-yellow); margin-top: 30px;">
+    Stowy Agency · juin 2026
+  </p>
+</div>
+</section>
+
+<footer>
+  Broccers — application développée pour <strong>Le Broc Café</strong>, 1 Rue du Canal, Villeurbanne (Puces du Canal).<br>
+  Document de présentation fonctionnelle · Pour usage interne et présentations commerciales.<br>
+  <br>
+  <em>Conçu avec exigence par Stowy Agency · SG Framework · Tailscale only · zero cloud public</em>
+</footer>
+
+</body>
+</html>

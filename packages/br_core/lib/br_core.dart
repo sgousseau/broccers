@@ -19,6 +19,7 @@ export 'src/entities/sg_break.dart';
 
 // === Entities — Menu ===
 export 'src/entities/sg_menu_card.dart';
+export 'src/entities/sg_menu_card_kind.dart';
 export 'src/entities/sg_menu_item.dart';
 export 'src/entities/sg_menu_category.dart';
 export 'src/entities/sg_allergen.dart';

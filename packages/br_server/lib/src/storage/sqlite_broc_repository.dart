@@ -354,6 +354,16 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
       db.execute('ALTER TABLE menu_items ADD COLUMN unavailable_reason TEXT');
     }
 
+    // Phase G : add kind to menu_cards
+    final menuCardCols = db
+        .select('PRAGMA table_info(menu_cards)')
+        .map((r) => r['name'] as String)
+        .toSet();
+    if (!menuCardCols.contains('kind')) {
+      db.execute("ALTER TABLE menu_cards ADD COLUMN kind TEXT NOT NULL DEFAULT 'food'");
+    }
+    db.execute('CREATE INDEX IF NOT EXISTS idx_menu_cards_kind_pub ON menu_cards(kind, published_at);');
+
     // === Phase A migrations from v0.1 → v0.2 (idempotent) ===
     final empCols = db
         .select('PRAGMA table_info(employees)')
@@ -689,8 +699,8 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         _db.execute('BEGIN TRANSACTION');
         try {
           _db.execute(
-            'INSERT INTO menu_cards(id, name, version, created_at, published_at) VALUES (?, ?, ?, ?, ?)',
-            [card.id, card.name, card.version, card.createdAt.toIso8601String(), card.publishedAt?.toIso8601String()],
+            'INSERT INTO menu_cards(id, name, version, kind, created_at, published_at) VALUES (?, ?, ?, ?, ?, ?)',
+            [card.id, card.name, card.version, card.kind.name, card.createdAt.toIso8601String(), card.publishedAt?.toIso8601String()],
           );
           for (final c in card.categories) {
             _db.execute(
@@ -717,8 +727,8 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         _db.execute('BEGIN');
         try {
           _db.execute(
-            'UPDATE menu_cards SET name = ?, version = ?, published_at = ? WHERE id = ?',
-            [card.name, card.version, card.publishedAt?.toIso8601String(), card.id],
+            'UPDATE menu_cards SET name = ?, version = ?, kind = ?, published_at = ? WHERE id = ?',
+            [card.name, card.version, card.kind.name, card.publishedAt?.toIso8601String(), card.id],
           );
           for (final it in card.items) {
             _db.execute(
@@ -751,20 +761,117 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
       });
 
   @override
-  Future<Result<SgMenuCard?, SgFailure>> getCurrentPublishedMenuCard() async => _wrap(() {
-        final rs = _db.select(
-          'SELECT * FROM menu_cards WHERE published_at IS NOT NULL ORDER BY version DESC LIMIT 1',
-        );
+  Future<Result<SgMenuCard?, SgFailure>> getCurrentPublishedMenuCard({SgMenuCardKind? kind}) async => _wrap(() {
+        final rs = kind == null
+            ? _db.select(
+                'SELECT * FROM menu_cards WHERE published_at IS NOT NULL ORDER BY version DESC LIMIT 1',
+              )
+            : _db.select(
+                'SELECT * FROM menu_cards WHERE published_at IS NOT NULL AND kind = ? ORDER BY version DESC LIMIT 1',
+                [kind.name],
+              );
         if (rs.isEmpty) return null;
         return _hydrateMenuCard(rs.first);
       });
 
   @override
-  Future<Result<List<SgMenuCard>, SgFailure>> listMenuCards({bool includeDrafts = false}) async => _wrap(() {
-        final rs = includeDrafts
-            ? _db.select('SELECT * FROM menu_cards ORDER BY version DESC')
-            : _db.select('SELECT * FROM menu_cards WHERE published_at IS NOT NULL ORDER BY version DESC');
+  Future<Result<List<SgMenuCard>, SgFailure>> listMenuCards({bool includeDrafts = false, SgMenuCardKind? kind}) async => _wrap(() {
+        var sql = 'SELECT * FROM menu_cards WHERE 1=1';
+        final params = <Object>[];
+        if (!includeDrafts) sql += ' AND published_at IS NOT NULL';
+        if (kind != null) {
+          sql += ' AND kind = ?';
+          params.add(kind.name);
+        }
+        sql += ' ORDER BY version DESC';
+        final rs = _db.select(sql, params);
         return rs.map(_hydrateMenuCard).toList();
+      });
+
+  @override
+  Future<Result<void, SgFailure>> deleteMenuCard(String id) async => _wrap(() {
+        _db.execute('DELETE FROM menu_cards WHERE id = ?', [id]);
+      });
+
+  // ============== Menu items CRUD (Phase G) ==============
+  @override
+  Future<Result<SgMenuItem, SgFailure>> createMenuItem(SgMenuItem it) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO menu_items(id, card_id, category_id, name, description, price_cents, available, allergens_json, sort_order, unavailable_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+          [it.id, it.cardId, it.categoryId, it.name, it.description, it.priceCents, it.available ? 1 : 0, jsonEncode(it.allergens.map((a) => a.name).toList()), it.sortOrder, it.unavailableReason],
+        );
+        return it;
+      });
+
+  @override
+  Future<Result<SgMenuItem, SgFailure>> updateMenuItem(SgMenuItem it) async => _wrap(() {
+        _db.execute(
+          'UPDATE menu_items SET category_id = ?, name = ?, description = ?, price_cents = ?, available = ?, allergens_json = ?, sort_order = ?, unavailable_reason = ? WHERE id = ?',
+          [
+            it.categoryId,
+            it.name,
+            it.description,
+            it.priceCents,
+            it.available ? 1 : 0,
+            jsonEncode(it.allergens.map((a) => a.name).toList()),
+            it.sortOrder,
+            it.unavailableReason,
+            it.id,
+          ],
+        );
+        return it;
+      });
+
+  @override
+  Future<Result<void, SgFailure>> deleteMenuItem(String id) async => _wrap(() {
+        _db.execute('DELETE FROM menu_items WHERE id = ?', [id]);
+      });
+
+  @override
+  Future<Result<SgMenuItem?, SgFailure>> getMenuItem(String id) async => _wrap(() {
+        final rs = _db.select('SELECT * FROM menu_items WHERE id = ?', [id]);
+        if (rs.isEmpty) return null;
+        final i = rs.first;
+        final allergensList =
+            (jsonDecode(i['allergens_json'] as String) as List<dynamic>)
+                .map((a) => SgAllergen.values.firstWhere((al) => al.name == a as String))
+                .toSet();
+        return SgMenuItem(
+          id: i['id'] as String,
+          cardId: i['card_id'] as String,
+          categoryId: i['category_id'] as String,
+          name: i['name'] as String,
+          description: i['description'] as String?,
+          priceCents: i['price_cents'] as int,
+          available: (i['available'] as int) == 1,
+          allergens: allergensList,
+          sortOrder: i['sort_order'] as int,
+          unavailableReason: i['unavailable_reason'] as String?,
+        );
+      });
+
+  // ============== Menu categories CRUD (Phase G) ==============
+  @override
+  Future<Result<SgMenuCategory, SgFailure>> createMenuCategory(SgMenuCategory c) async => _wrap(() {
+        _db.execute(
+          'INSERT INTO menu_categories(id, card_id, name, sort_order) VALUES (?, ?, ?, ?)',
+          [c.id, c.cardId, c.name, c.sortOrder],
+        );
+        return c;
+      });
+
+  @override
+  Future<Result<SgMenuCategory, SgFailure>> updateMenuCategory(SgMenuCategory c) async => _wrap(() {
+        _db.execute(
+          'UPDATE menu_categories SET name = ?, sort_order = ? WHERE id = ?',
+          [c.name, c.sortOrder, c.id],
+        );
+        return c;
+      });
+
+  @override
+  Future<Result<void, SgFailure>> deleteMenuCategory(String id) async => _wrap(() {
+        _db.execute('DELETE FROM menu_categories WHERE id = ?', [id]);
       });
 
   @override
@@ -806,10 +913,12 @@ class SqliteBrocRepository implements SgBrocRepositoryPort {
         unavailableReason: i['unavailable_reason'] as String?,
       );
     }).toList();
+    final kindRaw = r['kind'] as String?;
     return SgMenuCard(
       id: cardId,
       name: r['name'] as String,
       version: r['version'] as int,
+      kind: kindRaw != null ? SgMenuCardKind.fromName(kindRaw) : SgMenuCardKind.food,
       createdAt: DateTime.parse(r['created_at'] as String),
       publishedAt: r['published_at'] != null
           ? DateTime.parse(r['published_at'] as String)
