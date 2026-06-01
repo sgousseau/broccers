@@ -1,0 +1,1330 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Broccers — La plateforme qui pilote votre restaurant</title>
+<style>
+  :root {
+    --broc-red: #c72226;
+    --broc-red-dark: #8a181b;
+    --broc-yellow: #f5c842;
+    --broc-yellow-dark: #d4a82a;
+    --broc-cream: #f5ebd6;
+    --broc-black: #14100f;
+    --broc-deep: #0a0807;
+    --soft: #2a221e;
+    --soft-2: #1f1815;
+    --grey: #b5a89a;
+    --muted: #7a6f63;
+    --green: #4ade80;
+    --green-deep: #15803d;
+    --orange: #fb923c;
+    --blue: #60a5fa;
+    --purple: #c084fc;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--broc-deep);
+    color: var(--broc-cream);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a { color: var(--broc-yellow); text-decoration: none; transition: color 0.2s; }
+  a:hover { color: var(--broc-cream); }
+
+  code {
+    background: var(--soft);
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: 'SF Mono', 'Menlo', monospace;
+    font-size: 0.85em;
+    color: var(--broc-yellow);
+  }
+
+  /* ============================================== */
+  /* HERO                                            */
+  /* ============================================== */
+  .hero {
+    min-height: 90vh;
+    background:
+      radial-gradient(ellipse at top left, rgba(199, 34, 38, 0.35) 0%, transparent 50%),
+      radial-gradient(ellipse at bottom right, rgba(245, 200, 66, 0.18) 0%, transparent 55%),
+      linear-gradient(180deg, var(--broc-deep) 0%, var(--broc-black) 100%);
+    padding: 80px 30px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(245, 200, 66, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(245, 200, 66, 0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+  .hero > * { position: relative; z-index: 1; }
+
+  .hero .brand {
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    font-size: 13px;
+    display: inline-block;
+    margin-bottom: 20px;
+    box-shadow: 0 8px 30px rgba(245, 200, 66, 0.3);
+  }
+  .hero h1 {
+    font-size: clamp(2.5rem, 6vw, 5rem);
+    font-weight: 900;
+    letter-spacing: -2px;
+    line-height: 1.05;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, var(--broc-yellow) 0%, var(--broc-cream) 50%, var(--broc-yellow) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero .tagline {
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    color: var(--broc-cream);
+    max-width: 760px;
+    margin: 0 auto 14px;
+    font-weight: 400;
+  }
+  .hero .sub {
+    color: var(--grey);
+    font-style: italic;
+    max-width: 600px;
+    margin: 0 auto 36px;
+    font-size: 0.95rem;
+  }
+  .hero .hero-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 18px;
+    max-width: 800px;
+    width: 100%;
+    margin: 24px auto 0;
+  }
+  .hero .stat {
+    background: rgba(20, 16, 15, 0.55);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(245, 200, 66, 0.2);
+    border-radius: 12px;
+    padding: 20px 14px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .hero .stat:hover {
+    transform: translateY(-4px);
+    border-color: var(--broc-yellow);
+  }
+  .hero .stat .n {
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--broc-yellow);
+    line-height: 1;
+    display: block;
+    font-variant-numeric: tabular-nums;
+  }
+  .hero .stat .l {
+    font-size: 0.72rem;
+    color: var(--grey);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-top: 6px;
+  }
+  .hero .scroll-hint {
+    margin-top: 60px;
+    color: var(--muted);
+    font-size: 0.85rem;
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+  }
+
+  /* ============================================== */
+  /* SECTION                                         */
+  /* ============================================== */
+  section {
+    padding: 90px 30px;
+    position: relative;
+  }
+  section:nth-of-type(even) {
+    background: linear-gradient(180deg, transparent 0%, rgba(199, 34, 38, 0.04) 50%, transparent 100%);
+  }
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-label {
+    display: inline-block;
+    color: var(--broc-red);
+    font-weight: 700;
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    color: var(--broc-cream);
+    font-weight: 900;
+    margin-bottom: 16px;
+    letter-spacing: -1px;
+    line-height: 1.15;
+  }
+  h2 .accent {
+    color: var(--broc-yellow);
+  }
+  .section-intro {
+    font-size: 1.1rem;
+    color: var(--grey);
+    max-width: 740px;
+    margin-bottom: 40px;
+    line-height: 1.65;
+  }
+
+  /* ============================================== */
+  /* PAIN — Le problème                              */
+  /* ============================================== */
+  .pain-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 18px;
+  }
+  .pain {
+    background: rgba(199, 34, 38, 0.08);
+    border: 1px solid rgba(199, 34, 38, 0.2);
+    border-left: 4px solid var(--broc-red);
+    border-radius: 10px;
+    padding: 20px 22px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .pain:hover {
+    transform: translateY(-3px);
+    border-color: var(--broc-red);
+  }
+  .pain .quote {
+    font-style: italic;
+    color: var(--broc-yellow);
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 10px;
+    line-height: 1.4;
+  }
+  .pain .quote::before { content: '« '; opacity: 0.6; }
+  .pain .quote::after { content: ' »'; opacity: 0.6; }
+  .pain .body {
+    color: var(--broc-cream);
+    font-size: 0.92rem;
+  }
+
+  /* ============================================== */
+  /* MODULES — Le quoi                               */
+  /* ============================================== */
+  .modules-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 16px;
+  }
+  .module {
+    background: rgba(245, 235, 214, 0.04);
+    border: 1px solid rgba(245, 235, 214, 0.08);
+    border-radius: 12px;
+    padding: 24px 22px;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+  .module::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--broc-red), var(--broc-yellow));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .module:hover {
+    background: rgba(245, 235, 214, 0.07);
+    border-color: rgba(245, 200, 66, 0.3);
+    transform: translateY(-4px);
+  }
+  .module:hover::before { transform: scaleX(1); }
+  .module .icon {
+    font-size: 2.4rem;
+    display: block;
+    margin-bottom: 12px;
+    line-height: 1;
+  }
+  .module h3 {
+    color: var(--broc-yellow);
+    font-size: 1.1rem;
+    margin-bottom: 8px;
+    font-weight: 700;
+  }
+  .module p {
+    color: var(--grey);
+    font-size: 0.9rem;
+    line-height: 1.55;
+  }
+  .module.future {
+    border-color: rgba(251, 146, 60, 0.3);
+    background: rgba(251, 146, 60, 0.04);
+  }
+  .module.future::before {
+    background: linear-gradient(90deg, var(--orange), var(--broc-yellow));
+    transform: scaleX(1);
+  }
+  .module .badge {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: var(--orange);
+    color: var(--broc-black);
+    font-size: 0.65rem;
+    font-weight: 800;
+    padding: 3px 8px;
+    border-radius: 3px;
+    letter-spacing: 1px;
+  }
+
+  /* ============================================== */
+  /* PILIERS — Le comment                            */
+  /* ============================================== */
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+  }
+  .pillar {
+    background: linear-gradient(135deg, rgba(245, 235, 214, 0.05) 0%, rgba(199, 34, 38, 0.05) 100%);
+    border: 1px solid rgba(245, 235, 214, 0.08);
+    border-radius: 14px;
+    padding: 26px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .pillar .num {
+    position: absolute;
+    top: 10px;
+    right: 18px;
+    font-size: 4rem;
+    font-weight: 900;
+    color: var(--broc-red);
+    opacity: 0.18;
+    line-height: 1;
+  }
+  .pillar h3 {
+    color: var(--broc-yellow);
+    font-size: 1.2rem;
+    margin-bottom: 10px;
+    font-weight: 700;
+    position: relative;
+  }
+  .pillar p {
+    color: var(--broc-cream);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    position: relative;
+  }
+
+  /* ============================================== */
+  /* TIMELINE — Journée type                         */
+  /* ============================================== */
+  .timeline {
+    position: relative;
+    padding-left: 40px;
+    margin: 30px 0;
+  }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 12px;
+    top: 12px;
+    bottom: 12px;
+    width: 2px;
+    background: linear-gradient(180deg, var(--broc-red), var(--broc-yellow), var(--broc-red));
+  }
+  .step {
+    position: relative;
+    margin: 22px 0;
+    padding: 18px 22px;
+    background: rgba(245, 235, 214, 0.04);
+    border-radius: 10px;
+    border-left: 3px solid var(--broc-yellow);
+  }
+  .step::before {
+    content: '';
+    position: absolute;
+    left: -34px;
+    top: 24px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--broc-yellow);
+    box-shadow: 0 0 0 4px var(--broc-deep), 0 0 0 6px var(--broc-yellow);
+  }
+  .step .time {
+    color: var(--broc-red);
+    font-weight: 900;
+    font-family: 'SF Mono', monospace;
+    font-size: 0.9rem;
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+  .step .who {
+    color: var(--broc-yellow);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+  }
+  .step h4 {
+    color: var(--broc-cream);
+    font-size: 1.15rem;
+    margin-bottom: 6px;
+    font-weight: 700;
+  }
+  .step p {
+    color: var(--grey);
+    font-size: 0.92rem;
+    line-height: 1.55;
+  }
+
+  /* ============================================== */
+  /* IA SECTION                                      */
+  /* ============================================== */
+  .ai-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 16px;
+  }
+  .ai-card {
+    background: linear-gradient(135deg, rgba(96, 165, 250, 0.06) 0%, rgba(192, 132, 252, 0.06) 100%);
+    border: 1px solid rgba(96, 165, 250, 0.2);
+    border-radius: 12px;
+    padding: 22px 20px;
+    text-align: center;
+    transition: transform 0.2s;
+  }
+  .ai-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--blue);
+  }
+  .ai-card .glyph {
+    font-size: 2rem;
+    margin-bottom: 10px;
+  }
+  .ai-card h4 {
+    color: var(--blue);
+    margin-bottom: 8px;
+    font-size: 1rem;
+  }
+  .ai-card p {
+    color: var(--grey);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  /* ============================================== */
+  /* CAMERAS PHASE H                                 */
+  /* ============================================== */
+  .camera-hero {
+    background:
+      radial-gradient(circle at 30% 50%, rgba(251, 146, 60, 0.15) 0%, transparent 60%),
+      linear-gradient(135deg, var(--soft-2) 0%, var(--broc-deep) 100%);
+    border-radius: 16px;
+    padding: 50px 40px;
+    border: 1px solid rgba(251, 146, 60, 0.25);
+    position: relative;
+    overflow: hidden;
+  }
+  .camera-hero::before {
+    content: 'PHASE H';
+    position: absolute;
+    top: 18px;
+    right: 22px;
+    background: var(--orange);
+    color: var(--broc-black);
+    padding: 5px 14px;
+    border-radius: 4px;
+    font-weight: 900;
+    font-size: 0.78rem;
+    letter-spacing: 2px;
+  }
+  .camera-hero h3 {
+    color: var(--orange);
+    font-size: 1.6rem;
+    margin-bottom: 8px;
+    font-weight: 800;
+  }
+  .camera-hero .esp-label {
+    color: var(--broc-yellow);
+    font-family: 'SF Mono', monospace;
+    font-size: 0.9rem;
+    margin-bottom: 18px;
+  }
+  .camera-hero .desc {
+    color: var(--broc-cream);
+    margin-bottom: 24px;
+    font-size: 1rem;
+    line-height: 1.65;
+  }
+  .camera-features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .camera-feat {
+    background: rgba(20, 16, 15, 0.5);
+    border: 1px solid rgba(251, 146, 60, 0.15);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .camera-feat h4 {
+    color: var(--orange);
+    font-size: 0.95rem;
+    margin-bottom: 6px;
+  }
+  .camera-feat p {
+    color: var(--grey);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  /* ============================================== */
+  /* DEPLOYMENT — 3 modes                            */
+  /* ============================================== */
+  .deploy-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+  .deploy {
+    background: var(--soft-2);
+    border-radius: 14px;
+    padding: 28px 26px;
+    border-top: 4px solid;
+    position: relative;
+  }
+  .deploy.tailscale { border-color: var(--green); }
+  .deploy.docker { border-color: var(--blue); }
+  .deploy.usb { border-color: var(--orange); }
+  .deploy .mode-icon {
+    font-size: 2.2rem;
+    margin-bottom: 10px;
+  }
+  .deploy h3 {
+    color: var(--broc-yellow);
+    margin-bottom: 8px;
+    font-size: 1.2rem;
+  }
+  .deploy .tagline {
+    color: var(--grey);
+    font-style: italic;
+    margin-bottom: 14px;
+    font-size: 0.85rem;
+  }
+  .deploy ul {
+    list-style: none;
+    padding: 0;
+    margin: 12px 0;
+  }
+  .deploy ul li {
+    padding: 4px 0;
+    padding-left: 22px;
+    position: relative;
+    color: var(--broc-cream);
+    font-size: 0.88rem;
+  }
+  .deploy ul li::before {
+    content: '✓';
+    position: absolute;
+    left: 0;
+    color: var(--green);
+    font-weight: 700;
+  }
+  .deploy .usecase {
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid var(--soft);
+    color: var(--muted);
+    font-size: 0.82rem;
+    font-style: italic;
+  }
+
+  /* ============================================== */
+  /* STATS — Chiffres clés                           */
+  /* ============================================== */
+  .big-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+  }
+  .big-stat {
+    background: linear-gradient(135deg, var(--soft-2) 0%, var(--broc-deep) 100%);
+    border-radius: 12px;
+    padding: 30px 24px;
+    text-align: center;
+    border: 1px solid var(--soft);
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .big-stat:hover {
+    transform: translateY(-4px);
+    border-color: var(--broc-yellow);
+  }
+  .big-stat .num {
+    font-size: 3rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, var(--broc-yellow), var(--broc-red));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1;
+    display: block;
+    font-variant-numeric: tabular-nums;
+  }
+  .big-stat .label {
+    color: var(--grey);
+    font-size: 0.85rem;
+    margin-top: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+  }
+
+  /* ============================================== */
+  /* ROADMAP                                         */
+  /* ============================================== */
+  .phases-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 14px;
+  }
+  .phase {
+    background: var(--soft-2);
+    border-radius: 10px;
+    padding: 18px 20px;
+    border-left: 4px solid var(--muted);
+  }
+  .phase.done { border-color: var(--green); }
+  .phase.next { border-color: var(--orange); }
+  .phase.future { border-color: var(--blue); }
+  .phase .label {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    letter-spacing: 1.5px;
+    margin-bottom: 8px;
+    background: var(--muted);
+    color: var(--broc-black);
+  }
+  .phase.done .label { background: var(--green); }
+  .phase.next .label { background: var(--orange); }
+  .phase.future .label { background: var(--blue); }
+  .phase h4 {
+    color: var(--broc-yellow);
+    margin-bottom: 4px;
+    font-size: 1rem;
+  }
+  .phase p {
+    color: var(--grey);
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  /* ============================================== */
+  /* STACK                                           */
+  /* ============================================== */
+  .stack-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+  }
+  .stack-card {
+    background: var(--soft-2);
+    border: 1px solid var(--soft);
+    border-radius: 10px;
+    padding: 20px 18px;
+    text-align: center;
+    transition: border-color 0.2s;
+  }
+  .stack-card:hover { border-color: var(--broc-yellow); }
+  .stack-card .name {
+    color: var(--broc-yellow);
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 4px;
+  }
+  .stack-card .role {
+    color: var(--grey);
+    font-size: 0.8rem;
+  }
+
+  /* ============================================== */
+  /* PHILO                                           */
+  /* ============================================== */
+  .philo-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 18px;
+  }
+  .philo {
+    background: rgba(245, 200, 66, 0.05);
+    border-left: 4px solid var(--broc-yellow);
+    padding: 18px 22px;
+    border-radius: 0 8px 8px 0;
+  }
+  .philo strong {
+    color: var(--broc-yellow);
+    display: block;
+    margin-bottom: 6px;
+    font-size: 1rem;
+  }
+  .philo p {
+    color: var(--broc-cream);
+    font-size: 0.9rem;
+    margin: 0;
+    font-style: italic;
+    line-height: 1.55;
+  }
+
+  /* ============================================== */
+  /* FOOTER                                          */
+  /* ============================================== */
+  footer {
+    background: var(--broc-deep);
+    border-top: 1px solid var(--soft);
+    padding: 60px 30px 40px;
+    text-align: center;
+  }
+  footer .brand-final {
+    background: var(--broc-yellow);
+    color: var(--broc-black);
+    padding: 6px 14px;
+    border-radius: 4px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    font-size: 12px;
+    display: inline-block;
+    margin-bottom: 16px;
+  }
+  footer h3 {
+    color: var(--broc-yellow);
+    font-size: 1.4rem;
+    margin-bottom: 8px;
+  }
+  footer .links-row {
+    display: flex;
+    gap: 18px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 22px 0 30px;
+  }
+  footer .links-row a {
+    background: var(--soft);
+    padding: 10px 18px;
+    border-radius: 24px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: background 0.2s;
+  }
+  footer .links-row a:hover {
+    background: var(--broc-red);
+    color: var(--broc-cream);
+  }
+  footer .meta {
+    color: var(--muted);
+    font-size: 0.78rem;
+    margin-top: 20px;
+    font-family: 'SF Mono', monospace;
+  }
+
+  @media (max-width: 720px) {
+    .hero h1 { font-size: 2.2rem; }
+    .hero .stat .n { font-size: 1.8rem; }
+    section { padding: 60px 20px; }
+    h2 { font-size: 1.6rem; }
+    .timeline { padding-left: 30px; }
+    .timeline::before { left: 8px; }
+    .step::before { left: -30px; width: 12px; height: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================== -->
+<!-- HERO                                                            -->
+<!-- ============================================================== -->
+<section class="hero">
+  <div class="brand">CAFÉ</div>
+  <h1>Broccers</h1>
+  <p class="tagline">La plateforme qui pilote votre restaurant.<br>Sans cloud externe, sans abonnement mensuel, sans perte de contrôle.</p>
+  <p class="sub">Conçue pour Le Broc Café (Puces du Canal, Villeurbanne). Étendable à toute brasserie qui veut piloter plutôt que subir.</p>
+
+  <div class="hero-stats">
+    <div class="stat"><span class="n">11</span><span class="l">Modules métier</span></div>
+    <div class="stat"><span class="n">95+</span><span class="l">Fonctionnalités</span></div>
+    <div class="stat"><span class="n">30</span><span class="l">Feature flags</span></div>
+    <div class="stat"><span class="n">8</span><span class="l">Phases livrées</span></div>
+    <div class="stat"><span class="n">3</span><span class="l">Modes déploiement</span></div>
+    <div class="stat"><span class="n">0</span><span class="l">Cloud externe</span></div>
+  </div>
+
+  <p class="scroll-hint">↓ découvrir ↓</p>
+</section>
+
+<!-- ============================================================== -->
+<!-- §1 — POURQUOI                                                   -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">01 · Le problème</span>
+    <h2>Trois douleurs qui coûtent <span class="accent">tous les jours</span></h2>
+    <p class="section-intro">Dans une brasserie, le manager subit en permanence des sollicitations contradictoires. Quand il s'absente, la chaîne d'information se rompt et chaque incident devient une perte. Voici les six douleurs récurrentes que Broccers règle.</p>
+
+    <div class="pain-grid">
+      <div class="pain">
+        <div class="quote">Le saumon est en rupture.</div>
+        <p class="body">La cuisine prévient le bar, le bar oublie de prévenir la salle, trois serveurs continuent de proposer le plat. Trois clients déçus, trois excuses, et un plat à recréer en urgence.</p>
+      </div>
+      <div class="pain">
+        <div class="quote">Combien on a perdu en jetant ces 20 brochettes ?</div>
+        <p class="body">Personne ne sait. Personne ne note. À la fin du mois, on regarde les comptes et c'est trop tard pour comprendre et rectifier.</p>
+      </div>
+      <div class="pain">
+        <div class="quote">Le nouveau serveur ne connaît pas la carte.</div>
+        <p class="body">Le manager n'est pas là pour le briefer. Il propose ce qu'il croit savoir. Il manque les ventes de la promo du jour. Le client repart frustré.</p>
+      </div>
+      <div class="pain">
+        <div class="quote">On change le menu, qui ré-imprime la carte ?</div>
+        <p class="body">On modifie 3 prix sur Word, on perd la mise en page, on demande à un graphiste, on attend 2 jours, on imprime, on découvre une faute.</p>
+      </div>
+      <div class="pain">
+        <div class="quote">Le marché a augmenté de 30 %. Notre marge ?</div>
+        <p class="body">Aucune idée. On découvre en fin de mois que tel plat ne rapporte plus rien — depuis trois semaines déjà.</p>
+      </div>
+      <div class="pain">
+        <div class="quote">Qui a fait quoi, à quelle heure ?</div>
+        <p class="body">Pas de traçabilité. Quand un employé conteste son temps de travail, on n'a aucune preuve. Aucun moyen d'analyser pourquoi un service s'est mal passé.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §2 — QUOI                                                       -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">02 · Le quoi</span>
+    <h2>Onze modules pour <span class="accent">tout couvrir</span>, sans superflu</h2>
+    <p class="section-intro">Une application web responsive, accessible depuis téléphone, tablette ou ordinateur. Sans installation, sans téléchargement client. Organisée en onze modules autonomes qui se parlent.</p>
+
+    <div class="modules-grid">
+      <div class="module">
+        <span class="icon">👥</span>
+        <h3>Personnel &amp; RH</h3>
+        <p>Pointage horaire, multi-rôles dynamique, pauses légales FR, planning hebdo, onboarding par rôle, heatmap activité.</p>
+      </div>
+      <div class="module">
+        <span class="icon">📖</span>
+        <h3>Cartes &amp; menus</h3>
+        <p>8 types coexistants (plats, vins, desserts, etc.), éditeur visuel, PDF A4 imprimable, import depuis photo via IA, allergènes INCO.</p>
+      </div>
+      <div class="module">
+        <span class="icon">🍳</span>
+        <h3>Cuisine connectée</h3>
+        <p>Tickets kanban, dictée vocale (Whisper + Claude), recettes avec timers, cooking tasks auto, signalement rupture cook.</p>
+      </div>
+      <div class="module">
+        <span class="icon">🛒</span>
+        <h3>Achats &amp; fournisseurs</h3>
+        <p>Listes de courses par fournisseur, items urgents cochables, vue synchronisée temps réel entre toute l'équipe.</p>
+      </div>
+      <div class="module">
+        <span class="icon">💶</span>
+        <h3>Marges &amp; coûts</h3>
+        <p>Référentiel ingrédients, calcul marge temps réel avec code couleur, substitution avec traçabilité, profils économiques.</p>
+      </div>
+      <div class="module">
+        <span class="icon">🗑️</span>
+        <h3>Gaspillage &amp; pertes</h3>
+        <p>Déclaration en 30 sec, 9 raisons préconfigurées, auto-estimation valeur, récap 7j, breakdown par jour et par raison.</p>
+      </div>
+      <div class="module">
+        <span class="icon">📱</span>
+        <h3>Tables &amp; QR clients</h3>
+        <p>QR code unique par table, consultation publique de la carte sans installation, rotation secret anti-fraude.</p>
+      </div>
+      <div class="module">
+        <span class="icon">🚫</span>
+        <h3>Mode 86</h3>
+        <p>Cuisine signale une rupture, propagation instantanée sur tous les écrans (serveurs, QR clients, manager).</p>
+      </div>
+      <div class="module">
+        <span class="icon">⚙️</span>
+        <h3>Paramètres évolutifs</h3>
+        <p>Seuils marges, pauses légales, charges sociales, configs voice — ajustables sans coder, audit-loggés.</p>
+      </div>
+      <div class="module">
+        <span class="icon">📋</span>
+        <h3>Journal d'audit</h3>
+        <p>Toutes les actions tracées (actor, action, target, raison) — append-only, filtrable, exportable.</p>
+      </div>
+      <div class="module">
+        <span class="icon">🤖</span>
+        <h3>Assistant IA</h3>
+        <p>Briefing matinal, question libre, vision photo carte, parsing vocal, onboarding HACCP-aware. Aucune API tierce.</p>
+      </div>
+      <div class="module future">
+        <span class="badge">PHASE H</span>
+        <span class="icon">📷</span>
+        <h3>Caméras IA distribuées</h3>
+        <p>ESP32-S3 Sense : reconnaissance faciale opt-in, présence par zone, heatmap flux client, sécurité post-fermeture.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §3 — COMMENT (4 piliers)                                        -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">03 · Le comment</span>
+    <h2>Cinq piliers, jamais <span class="accent">négociables</span></h2>
+    <p class="section-intro">Chaque choix d'architecture découle de ces cinq principes. Ils garantissent que Broccers reste fiable, durable et au service du restaurant — pas l'inverse.</p>
+
+    <div class="pillars">
+      <div class="pillar">
+        <div class="num">1</div>
+        <h3>Source unique de vérité</h3>
+        <p>La carte affichée au client, la carte vue par le serveur sur sa tablette, et la carte imprimée en cuisine sont toujours identiques. Une seule donnée, un seul endroit où elle vit. Quand la cuisine signale une rupture, c'est mis à jour partout en moins de deux secondes.</p>
+      </div>
+      <div class="pillar">
+        <div class="num">2</div>
+        <h3>Tracer pour comprendre, jamais pour réprimander</h3>
+        <p>Chaque action est consignée avec l'auteur, la cible et la raison. Non pour fliquer, mais pour analyser ce qui peut s'améliorer. Toute alerte va au manager, jamais directement à l'employé. Toute formulation reste hypothétique. Nous appelons cela l'observabilité bienveillante.</p>
+      </div>
+      <div class="pillar">
+        <div class="num">3</div>
+        <h3>L'IA assiste, l'humain décide</h3>
+        <p>Aucune action critique (publication d'une carte, validation d'une commande, changement de prix) n'est exécutée sans confirmation humaine explicite. L'IA propose une extraction, un parsing, un briefing — la personne décide. Toujours.</p>
+      </div>
+      <div class="pillar">
+        <div class="num">4</div>
+        <h3>Local par défaut, cloud jamais</h3>
+        <p>Toutes les données sont stockées sur la machine du restaurant. Aucune dépendance à un service externe payant. L'accès distant se fait via Tailscale (réseau privé chiffré), Docker en local ou clé USB — jamais via Internet public.</p>
+      </div>
+      <div class="pillar">
+        <div class="num">5</div>
+        <h3>Évolutif sans réécriture</h3>
+        <p>Seuils de marge, profils économiques, rôles employés, types de cartes, charges sociales : tout ce qui dépend de la conjoncture est paramétrable depuis l'interface. Aucun développeur requis pour s'adapter au prochain choc économique.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §4 — UNE JOURNÉE AU BROC                                        -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">04 · Concret</span>
+    <h2>Une journée type au <span class="accent">Broc Café</span></h2>
+    <p class="section-intro">Pour rendre Broccers tangible, voici une journée racontée du point de vue de l'application — du briefing matinal à la fermeture.</p>
+
+    <div class="timeline">
+      <div class="step">
+        <div class="time">07:30</div>
+        <div class="who">Manager</div>
+        <h4>Briefing matinal</h4>
+        <p>Patrick ouvre l'app sur sa tablette. Bouton ☀️. Claude présente en quinze secondes : 4 shifts aujourd'hui, 3 courses urgentes, plats de la veille qui n'ont pas marché, rappel livraison fournisseur à 10 h.</p>
+      </div>
+      <div class="step">
+        <div class="time">08:00</div>
+        <div class="who">Cuisinier</div>
+        <h4>Clock-in + checklist HACCP</h4>
+        <p>Mathieu pointe via PIN court sur la tablette cuisine. Son shift démarre en rôle cook. Il consulte sa checklist d'onboarding générée la veille par Claude : températures frigos, hygiène plan de travail.</p>
+      </div>
+      <div class="step">
+        <div class="time">09:30</div>
+        <div class="who">Manager</div>
+        <h4>Import carte du jour depuis photo</h4>
+        <p>Patrick prend en photo la nouvelle suggestion du chef. Bouton « Importer depuis photo ». Claude extrait en 20 secondes : « Tartare de saumon, 14 €, allergènes poisson ». Patrick relit, ajoute « moutarde », publie v3.</p>
+      </div>
+      <div class="step">
+        <div class="time">10:00</div>
+        <div class="who">Manager</div>
+        <h4>Livraison fournisseur + recalcul marge</h4>
+        <p>Le poissonnier livre en avance. Patrick coche les items reçus. Le saumon a augmenté de 2 €/kg : il met à jour le prix. La marge du tartare passe de 72 % à 65 %, code couleur jaune.</p>
+      </div>
+      <div class="step">
+        <div class="time">12:00</div>
+        <div class="who">Serveur · Cuisinier</div>
+        <h4>Service midi · commandes vocales</h4>
+        <p>Kevin dicte : « Table 3, deux entrecôtes saignantes, un tartare, trois Sancerre ». Claude transforme en 4 items structurés validés d'un clic, envoyés en cuisine. Mathieu démarre les cuissons, timer visible.</p>
+      </div>
+      <div class="step">
+        <div class="time">13:15</div>
+        <div class="who">Cuisinier</div>
+        <h4>Rupture saumon · propagation instantanée</h4>
+        <p>Mathieu tape 🚫 dans l'onglet Cuisine, choisit « Tartare », raison « plus de stock, livraison demain ». Le tartare apparaît barré sur les téléphones serveurs et les QR clients — en moins de 2 secondes.</p>
+      </div>
+      <div class="step">
+        <div class="time">17:00</div>
+        <div class="who">Cuisinier</div>
+        <h4>Déclaration gaspillage</h4>
+        <p>Mathieu a 20 brochettes invendues du service midi. Onglet Pertes → FAB → label « brochettes poulet », quantité 20, raison « production non écoulée », valeur 16 € (auto-estimée). Alimentera la décision de réduire la production des mardis.</p>
+      </div>
+      <div class="step">
+        <div class="time">23:30</div>
+        <div class="who">Manager</div>
+        <h4>Fermeture · revue de journée</h4>
+        <p>Tout le monde clock-out. Patrick consulte le journal : 47 tickets cuisine, 3 ruptures, 1 changement de rôle, 1 modification de prix, 1 perte déclarée. Demain matin, le briefing IA tiendra compte de tout ça.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §5 — INTELLIGENCE ARTIFICIELLE                                  -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">05 · IA partout</span>
+    <h2>L'intelligence artificielle au service du <span class="accent">terrain</span></h2>
+    <p class="section-intro">Claude est utilisé partout dans l'application pour automatiser ce qui n'a aucune valeur ajoutée humaine. Sans clé API exposée, sans dépendance cloud public, sans surcoût à l'usage. Tout passe par le binaire <code>claude</code> en subprocess via le cluster Tailscale.</p>
+
+    <div class="ai-grid">
+      <div class="ai-card">
+        <div class="glyph">📸</div>
+        <h4>Vision photo carte</h4>
+        <p>Une photo de carte papier → JSON structuré (catégories, plats, prix, allergènes). 20 secondes, 30 minutes économisées.</p>
+      </div>
+      <div class="ai-card">
+        <div class="glyph">🎙️</div>
+        <h4>Dictée serveur</h4>
+        <p>Audio (Whisper) → ticket structuré (Claude). -80 % d'erreurs vs papier, vitesse multipliée par 3.</p>
+      </div>
+      <div class="ai-card">
+        <div class="glyph">☀️</div>
+        <h4>Briefing matinal</h4>
+        <p>Synthèse personnalisée : qui travaille, quels plats, quelles courses urgentes, alertes.</p>
+      </div>
+      <div class="ai-card">
+        <div class="glyph">❓</div>
+        <h4>Question libre</h4>
+        <p>Chat IA avec le contexte Broc en input. Le manager pose n'importe quelle question, réponse immédiate.</p>
+      </div>
+      <div class="ai-card">
+        <div class="glyph">🎓</div>
+        <h4>Onboarding HACCP</h4>
+        <p>Pour un nouvel employé, génération automatique de la checklist adaptée à son rôle.</p>
+      </div>
+      <div class="ai-card">
+        <div class="glyph">📑</div>
+        <h4>Génération PDF</h4>
+        <p>Layout A4 imprimable, design Broc, allergènes INCO conformes — produit en Dart natif.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §6 — CAMÉRAS PHASE H                                            -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">06 · Différenciateur</span>
+    <h2>Caméras IA <span class="accent">distribuées</span></h2>
+    <p class="section-intro">Un réseau de micro-caméras ESP32-S3 Sense déployées dans le restaurant. Chaque caméra perçoit, traite localement, et publie uniquement des événements structurés au serveur central. Aucun flux vidéo continu, aucune image qui sort de la caméra — sauf opt-in explicite.</p>
+
+    <div class="camera-hero">
+      <h3>📷 ESP32-S3 Sense — perception distribuée privacy-by-design</h3>
+      <div class="esp-label">Seeed Studio XIAO ESP32-S3 Sense · OV2640 1600×1200 · PDM mic · Wi-Fi · BT · microSD · 21 × 17,5 mm</div>
+      <p class="desc">Module compact à faible coût, déjà testé avec succès pour la reconnaissance faciale chez Stowy. L'intégration côté serveur est livrée (endpoint <code>POST /api/camera-events</code>, gated par feature flag). Le firmware ESP32 reste à coder pour la livraison finale Phase H.</p>
+
+      <div class="camera-features">
+        <div class="camera-feat">
+          <h4>Reconnaissance faciale opt-in</h4>
+          <p>Une caméra à l'entrée du local personnel détecte l'arrivée, clock-in automatique. Embedding stocké localement, jamais envoyé en externe.</p>
+        </div>
+        <div class="camera-feat">
+          <h4>Présence par zone</h4>
+          <p>Découpage : cuisine, bar, salle, terrasse, entrée, réserve. Détection anonyme de présence pour mesurer la fréquentation.</p>
+        </div>
+        <div class="camera-feat">
+          <h4>Heatmap flux client</h4>
+          <p>Agrégation des présences pour comprendre quelle zone sature à quelle heure. Aide au dimensionnement des shifts futurs.</p>
+        </div>
+        <div class="camera-feat">
+          <h4>Sécurité post-fermeture</h4>
+          <p>Hors heures d'ouverture, mode sécurité : mouvement détecté → alerte manager immédiate. Pas d'enregistrement vidéo continu.</p>
+        </div>
+        <div class="camera-feat">
+          <h4>Vision spatiale</h4>
+          <p>Estimation du nombre de couverts libres en terrasse en temps réel, pour optimiser la prise de réservation.</p>
+        </div>
+        <div class="camera-feat">
+          <h4>Privacy by design</h4>
+          <p>Seuls les événements structurés (id, type, horodatage, zone) sont émis. Aucune image ne quitte la caméra, sauf opt-in apprentissage.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §7 — TROIS MODES DE DÉPLOIEMENT                                 -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">07 · Portabilité</span>
+    <h2>Trois modes, <span class="accent">selon le contexte</span></h2>
+    <p class="section-intro">Le même binaire Broccers tourne dans trois contextes complètement différents. Le super-admin contrôle la configuration et la visibilité via le système de feature flags (30 drapeaux, 4 catégories) qui sert également de mécanisme de licence par module.</p>
+
+    <div class="deploy-grid">
+      <div class="deploy tailscale">
+        <div class="mode-icon">🏠</div>
+        <h3>Mode A — Tailscale</h3>
+        <div class="tagline">Production maison sur Mac Studio</div>
+        <ul>
+          <li>Aucun port public exposé</li>
+          <li>Tailnet enrôlé, chiffré WireGuard</li>
+          <li>IA Claude depuis le cluster</li>
+          <li>Zéro install client</li>
+        </ul>
+        <div class="usecase">Cas d'usage : le Broc Café au quotidien.</div>
+      </div>
+      <div class="deploy docker">
+        <div class="mode-icon">🐳</div>
+        <h3>Mode B — Docker</h3>
+        <div class="tagline">Autonomie réseau, sur n'importe quel serveur</div>
+        <ul>
+          <li>Dockerfile multi-stage léger (~80 Mo)</li>
+          <li>docker-compose 2 services + volume</li>
+          <li>nginx pour le frontend statique</li>
+          <li>Healthcheck intégré</li>
+        </ul>
+        <div class="usecase">Cas d'usage : déploiement chez un client qui ne veut pas Tailscale.</div>
+      </div>
+      <div class="deploy usb">
+        <div class="mode-icon">💾</div>
+        <h3>Mode C — USB portable</h3>
+        <div class="tagline">Démo commerciale, totalement nomade</div>
+        <ul>
+          <li>Binaire natif Mac/Linux/Win</li>
+          <li>Flutter Web release embarqué</li>
+          <li>BD vierge ou seed démo</li>
+          <li>Launcher auto-ouvre navigateur</li>
+        </ul>
+        <div class="usecase">Cas d'usage : pitch commercial chez un prospect, sans réseau.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §8 — STATS PRODUIT                                              -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">08 · Ce qui est construit</span>
+    <h2>Pas une promesse, <span class="accent">opérationnel</span></h2>
+    <p class="section-intro">Broccers n'est pas un slide deck. C'est un produit qui tourne, qui sert des données réelles, qui a été testé end-to-end et qui est prêt pour l'ouverture du Broc Café en juin 2026.</p>
+
+    <div class="big-stats">
+      <div class="big-stat"><span class="num">11</span><span class="label">Modules livrés</span></div>
+      <div class="big-stat"><span class="num">95+</span><span class="label">Fonctionnalités</span></div>
+      <div class="big-stat"><span class="num">50+</span><span class="label">Routes API</span></div>
+      <div class="big-stat"><span class="num">30</span><span class="label">Feature flags</span></div>
+      <div class="big-stat"><span class="num">8</span><span class="label">Phases livrées</span></div>
+      <div class="big-stat"><span class="num">10</span><span class="label">Onglets UI</span></div>
+      <div class="big-stat"><span class="num">14</span><span class="label">Allergènes INCO</span></div>
+      <div class="big-stat"><span class="num">100 %</span><span class="label">Architecture SG</span></div>
+      <div class="big-stat"><span class="num">100 %</span><span class="label">Local, zéro cloud</span></div>
+      <div class="big-stat"><span class="num">FR</span><span class="label">Art. L. 3121-16</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §9 — PHILOSOPHIE                                                -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">09 · Philosophie produit</span>
+    <h2>Choix faits <span class="accent">exprès</span></h2>
+    <p class="section-intro">Quatre principes qui guident chaque décision de conception. Ils ne sont pas négociables et ils sont visibles dans le moindre écran.</p>
+
+    <div class="philo-grid">
+      <div class="philo">
+        <strong>Observabilité bienveillante</strong>
+        <p>Le journal d'audit existe pour comprendre et améliorer, jamais pour réprimander. Les alertes vont au manager, jamais directement à l'employé. Toute formulation est hypothétique (« semble », « peut-être »).</p>
+      </div>
+      <div class="philo">
+        <strong>Pas de superflu</strong>
+        <p>Chaque fonctionnalité doit résoudre un vrai problème opérationnel. Pas de gadget, pas d'animation décorative, pas d'écran de chargement gratuit. Trois fois par semaine ou rien.</p>
+      </div>
+      <div class="philo">
+        <strong>Le restaurant maître de ses données</strong>
+        <p>Tout local sur la machine du restaurant. Pas d'abonnement SaaS qui grossit avec le CA. Pas de risque de couper en cas de panne internet du quartier.</p>
+      </div>
+      <div class="philo">
+        <strong>L'humain au-dessus de la machine</strong>
+        <p>L'IA propose, l'humain décide. Aucune action critique (publication, prix, déclaration de perte) sans validation explicite. Toujours.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §10 — ROADMAP                                                   -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">10 · Roadmap</span>
+    <h2>Huit phases livrées, <span class="accent">trois à venir</span></h2>
+    <p class="section-intro">Broccers est développé par phases nommées de A à K+. Chaque phase apporte un ensemble cohérent de fonctionnalités, avec sa documentation, son catalogue mis à jour et ses tests.</p>
+
+    <div class="phases-grid">
+      <div class="phase done">
+        <span class="label">PHASE A</span>
+        <h4>Multi-rôles + Journal d'audit</h4>
+        <p>Segments de shift, observability bienveillante, append-only.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE B</span>
+        <h4>Taux horaires + coût shift</h4>
+        <p>Versioning taux, calcul par segment, consommation staff.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE D</span>
+        <h4>Briefing IA + heatmap + onboarding</h4>
+        <p>Pourboires, heatmap 7j, checklists HACCP par rôle.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE E</span>
+        <h4>Commande vocale + recettes</h4>
+        <p>Dictée Whisper+Claude, kanban, cooking tasks + timers.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE F</span>
+        <h4>Settings + marges + pertes + QR</h4>
+        <p>Paramètres évolutifs, ingrédients, gaspillage, Mode 86.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE G</span>
+        <h4>Éditeur cartes + import photo IA</h4>
+        <p>8 types coexistants, CRUD complet, Claude Vision, QR offline.</p>
+      </div>
+      <div class="phase done">
+        <span class="label">PHASE H</span>
+        <h4>Feature flags + portabilité + ESP32</h4>
+        <p>30 flags, Docker, USB portable, domain caméras + endpoint.</p>
+      </div>
+      <div class="phase next">
+        <span class="label">PHASE H+</span>
+        <h4>Firmware ESP32-S3</h4>
+        <p>Code embarqué : reconnaissance faciale opt-in, présence, sécurité.</p>
+      </div>
+      <div class="phase next">
+        <span class="label">PHASE I</span>
+        <h4>Multi-tenancy avancé</h4>
+        <p>Plusieurs restaurants sur une instance, isolation données, dashboards comparatifs.</p>
+      </div>
+      <div class="phase future">
+        <span class="label">PHASE J</span>
+        <h4>Commande client au QR</h4>
+        <p>Le client scanne et commande, validation serveur avant envoi cuisine.</p>
+      </div>
+      <div class="phase future">
+        <span class="label">PHASE K</span>
+        <h4>Réservations en ligne</h4>
+        <p>Gestion réservations, vue planning par service, intégration agenda.</p>
+      </div>
+      <div class="phase future">
+        <span class="label">PHASE L+</span>
+        <h4>Suggestions IA · tuteur · dashboards</h4>
+        <p>Accords mets-vins, jeu de rôle formation, dashboards financiers temps réel.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- §11 — STACK                                                     -->
+<!-- ============================================================== -->
+<section>
+  <div class="container">
+    <span class="section-label">11 · Stack technique</span>
+    <h2>Outillage <span class="accent">simple et durable</span></h2>
+    <p class="section-intro">Aucun framework propriétaire. Pas de stack à la mode. Des choix techniques éprouvés, choisis pour leur stabilité dans le temps et leur autonomie vis-à-vis d'éditeurs tiers.</p>
+
+    <div class="stack-grid">
+      <div class="stack-card"><div class="name">Dart 3.8+</div><div class="role">Langage unique back + front</div></div>
+      <div class="stack-card"><div class="name">Flutter Web</div><div class="role">PWA cross-platform</div></div>
+      <div class="stack-card"><div class="name">SQLite 3</div><div class="role">Stockage local WAL</div></div>
+      <div class="stack-card"><div class="name">shelf</div><div class="role">Serveur HTTP léger</div></div>
+      <div class="stack-card"><div class="name">package:pdf</div><div class="role">PDF Dart natif</div></div>
+      <div class="stack-card"><div class="name">qr_flutter</div><div class="role">QR offline</div></div>
+      <div class="stack-card"><div class="name">bcrypt + JWT</div><div class="role">Auth durcie</div></div>
+      <div class="stack-card"><div class="name">Tailscale</div><div class="role">Réseau privé chiffré</div></div>
+      <div class="stack-card"><div class="name">Docker</div><div class="role">Conteneur autonome</div></div>
+      <div class="stack-card"><div class="name">Claude Max</div><div class="role">IA via subprocess</div></div>
+      <div class="stack-card"><div class="name">Whisper</div><div class="role">STT optionnel local</div></div>
+      <div class="stack-card"><div class="name">ESP32-S3</div><div class="role">Caméras distribuées</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================================================== -->
+<!-- FOOTER                                                          -->
+<!-- ============================================================== -->
+<footer>
+  <div class="brand-final">CAFÉ</div>
+  <h3>Le Broc — Puces du Canal, Villeurbanne</h3>
+  <p style="color: var(--grey); margin-bottom: 6px;">Édité par <strong style="color: var(--broc-yellow);">Stowy Agency</strong> · juin 2026</p>
+
+  <div class="links-row">
+    <a href="/docs/specifications">📚 Spécifications exhaustives</a>
+    <a href="/docs/features">🎛️ Table des feature flags</a>
+    <a href="/docs/presentation">📖 Présentation courte</a>
+    <a href="/docs/product">🔧 Documentation technique</a>
+    <a href="/docs/schema">🗺️ Schéma visuel</a>
+    <a href="/api/health">🩺 Health API</a>
+  </div>
+
+  <div class="meta">
+    Broccers v0.8.0 · SG Framework · Tailscale only · Zero cloud public · Privacy by design<br>
+    PIN super-admin par défaut : <code>1234</code>
+  </div>
+</footer>
+
+</body>
+</html>

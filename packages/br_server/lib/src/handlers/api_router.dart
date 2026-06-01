@@ -104,6 +104,9 @@ class BrApiRouter {
     r.get('/docs/features', _serveDocsFeatures);
     r.get('/docs/features.html', _serveDocsFeatures);
     r.get('/docs/flags', _serveDocsFeatures);
+    r.get('/docs/overview', _serveDocsOverview);
+    r.get('/docs/overview.html', _serveDocsOverview);
+    r.get('/overview', _serveDocsOverview);
     r.get('/', _serveDocsIndex);
 
     r.get('/api/employees', _withAuth(_listEmployees));
@@ -1012,6 +1015,7 @@ class BrApiRouter {
   Future<Response> _serveDocsPresentation(Request req) => _serveDocFile('docs/presentation.html');
   Future<Response> _serveDocsSpecifications(Request req) => _serveDocFile('docs/specifications.html');
   Future<Response> _serveDocsFeatures(Request req) => _serveDocFile('docs/features.html');
+  Future<Response> _serveDocsOverview(Request req) => _serveDocFile('docs/overview.html');
 
   Future<Response> _serveDocsIndex(Request req) async {
     return Response.ok(
@@ -1027,6 +1031,7 @@ h1{font-size:3rem;margin:20px 0;font-weight:900;background:linear-gradient(135de
 <h1>Le Broc</h1>
 <p class="lead">Serveur Broccers — Puces du Canal, Villeurbanne</p>
 <p><strong style="color:#f5c842">App PWA :</strong> <a href="http://127.0.0.1:8766">http://127.0.0.1:8766</a> (Flutter Web)</p>
+<p><strong style="color:#f5c842">🌟 Vue d'ensemble (la belle présentation) :</strong> <a href="/docs/overview">/docs/overview</a></p>
 <p><strong style="color:#f5c842">📖 Présentation fonctionnelle (pour les nuls) :</strong> <a href="/docs/presentation">/docs/presentation</a></p>
 <p><strong style="color:#f5c842">📚 Spécifications exhaustives (table des matières) :</strong> <a href="/docs/specifications">/docs/specifications</a></p>
 <p><strong style="color:#f5c842">🎛️ Table des feature flags (30 flags) :</strong> <a href="/docs/features">/docs/features</a></p>
