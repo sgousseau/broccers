@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'src/admin_screen.dart';
 import 'src/api.dart';
 import 'src/br_sg.dart';
 import 'src/menu_editor_screen.dart';
@@ -326,6 +327,7 @@ class _HomeShellState extends State<HomeShell> {
       WasteScreen(api: widget.api),
       TablesScreen(api: widget.api),
       SettingsScreen(api: widget.api),
+      AdminScreen(api: widget.api),
     ];
     return Scaffold(
       appBar: AppBar(
@@ -364,6 +366,7 @@ class _HomeShellState extends State<HomeShell> {
           NavigationDestination(icon: Icon(Icons.delete_outline), label: 'Pertes'),
           NavigationDestination(icon: Icon(Icons.qr_code), label: 'Tables'),
           NavigationDestination(icon: Icon(Icons.admin_panel_settings), label: 'Paramètres'),
+          NavigationDestination(icon: Icon(Icons.shield), label: 'Admin'),
         ],
       ),
     );
