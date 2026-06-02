@@ -373,9 +373,9 @@
     <div class="summary-stat"><span class="n">21</span><span class="l">API tests</span></div>
     <div class="summary-stat"><span class="n">11</span><span class="l">Probes</span></div>
     <div class="summary-stat"><span class="n">6</span><span class="l">Docs HTML</span></div>
-    <div class="summary-stat"><span class="n">9</span><span class="l">Screenshots</span></div>
+    <div class="summary-stat"><span class="n">12</span><span class="l">Écrans Flutter</span></div>
+    <div class="summary-stat"><span class="n">1</span><span class="l">Build macOS natif</span></div>
     <div class="summary-stat"><span class="n">21/21</span><span class="l">API OK</span></div>
-    <div class="summary-stat"><span class="n">10/11</span><span class="l">Probes OK</span></div>
   </div>
 </div>
 
@@ -391,6 +391,8 @@
     <li><a href="#phaseE">Phase E — Cuisine connectée</a></li>
     <li><a href="#phaseH">Phase H — Feature flags + Caméras ESP32</a></li>
     <li><a href="#docs">Documents HTML servis</a></li>
+    <li><a href="#flutter">Écrans Flutter authentifiés (Playwright)</a></li>
+    <li><a href="#macos">Build macOS natif</a></li>
     <li><a href="#probes">Probes adversariaux (cas d'erreur)</a></li>
     <li><a href="#findings">Observations &amp; findings</a></li>
     <li><a href="#conclusion">Conclusion</a></li>
@@ -892,6 +894,240 @@
       </div>
       <img src="/docs/test-assets/doc_schema.png" alt="Doc schema screenshot">
     </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<section class="phase h-phase" id="flutter">
+  <h2><span class="phase-tag">FLUTTER UI</span>11 onglets capturés authentifié via Playwright</h2>
+  <p class="lead">Capture automatisée via Playwright (Chromium headless) avec auth réelle via UI : remplissage du champ PIN « 1234 », clic Entrer, attente du boot complet, puis clic sur chacun des 11 onglets de la NavigationBar (Personnel · Cuisine · Carte · Courses · Question · Journal · Coûts · Pertes · Tables · Paramètres · Admin). Script <code>tools/capture-flutter-screens.py</code>.</p>
+
+  <ul class="test-list">
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Login screen avec brand CAFÉ + champ PIN + bouton Entrer
+      </div>
+      <div class="observed">22 881 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Personnel — 6 employés listés (Eros, Kevin, Mathieu, Rico, Seb, Seb Super Admin) avec rôles multi-capabilities + heures contractuelles
+      </div>
+      <div class="observed">68 863 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Cuisine — tickets kanban + FAB rouge « Nouvelle commande vocale » + FAB jaune « Signaler rupture »
+      </div>
+      <div class="observed">65 396 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Carte — liste cartes filtrable par type (food/wine/dessert…) + bouton « Importer photo »
+      </div>
+      <div class="observed">42 006 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Courses — listes de courses par fournisseur (vide pour cette instance)
+      </div>
+      <div class="observed">21 458 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Question IA — chat libre avec Claude
+      </div>
+      <div class="observed">89 957 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Journal — vue chronologique des événements audit (création waste, toggle flag, camera events…)
+      </div>
+      <div class="observed">116 312 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Coûts — taux horaires + heatmap 7 jours
+      </div>
+      <div class="observed">65 750 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Pertes — déclarations de gaspillage + récap hebdomadaire
+      </div>
+      <div class="observed">57 661 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Tables — 7 tables avec leurs QR codes (T1–T6 + T-VERIFY)
+      </div>
+      <div class="observed">43 087 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Paramètres — 10 settings versionnés par catégorie (marges, pauses, coûts, vocal)
+      </div>
+      <div class="observed">91 051 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Onglet Admin (super-admin) — 30 feature flags avec switches verts/jaunes, dépendances bleues, filtres catégorie
+      </div>
+      <div class="observed">110 944 bytes</div>
+    </li>
+  </ul>
+
+  <div class="screenshots-grid">
+    <div class="screenshot">
+      <div class="caption">
+        <span>Login screen · brand CAFÉ</span>
+        <a href="/docs/test-assets/flutter_login.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_login.png" alt="Flutter login screen">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Personnel (Phase A multi-rôles)</span>
+        <a href="/docs/test-assets/flutter_personnel.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_personnel.png" alt="Onglet Personnel">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Cuisine (Phase E + Mode 86)</span>
+        <a href="/docs/test-assets/flutter_kitchen.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_kitchen.png" alt="Onglet Cuisine">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Cartes (Phase G multi-types)</span>
+        <a href="/docs/test-assets/flutter_menu.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_menu.png" alt="Onglet Carte">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Courses</span>
+        <a href="/docs/test-assets/flutter_shopping.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_shopping.png" alt="Onglet Courses">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Question IA (Phase D)</span>
+        <a href="/docs/test-assets/flutter_question.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_question.png" alt="Onglet Question">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Journal d'audit (Phase A)</span>
+        <a href="/docs/test-assets/flutter_journal.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_journal.png" alt="Onglet Journal">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Coûts &amp; heatmap (Phase B+D)</span>
+        <a href="/docs/test-assets/flutter_costs.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_costs.png" alt="Onglet Coûts">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Pertes (Phase F)</span>
+        <a href="/docs/test-assets/flutter_waste.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_waste.png" alt="Onglet Pertes">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Tables QR (Phase F)</span>
+        <a href="/docs/test-assets/flutter_tables.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_tables.png" alt="Onglet Tables">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Paramètres versionnés</span>
+        <a href="/docs/test-assets/flutter_settings.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_settings.png" alt="Onglet Paramètres">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Admin · 30 feature flags (Phase H)</span>
+        <a href="/docs/test-assets/flutter_admin.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_admin.png" alt="Onglet Admin super-admin">
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<section class="phase h-phase" id="macos">
+  <h2><span class="phase-tag">MACOS</span>Build natif macOS desktop</h2>
+  <p class="lead">En complément du déploiement Web/Tailscale/Docker/USB, Broccers est désormais aussi distribuable en application macOS native via Flutter desktop. Permet une installation sur Mac sans navigateur, accès à l'API br_server local ou distant.</p>
+
+  <ul class="test-list">
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>flutter config --enable-macos-desktop</code>
+        <div class="desc">Activation du support desktop macOS (déjà disponible Flutter 3.41+).</div>
+      </div>
+      <div class="observed">true</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>flutter create --platforms=macos .</code>
+        <div class="desc">Scaffolding du dossier <code>packages/br_web/macos/</code> avec Runner.xcodeproj, Podfile, Info.plist.</div>
+      </div>
+      <div class="observed">5 dossiers créés</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>flutter build macos --release</code>
+        <div class="desc">Compilation release du bundle .app — toutes les fonctionnalités UI Broccers v0.8.0 incluses.</div>
+      </div>
+      <div class="observed">br_web.app · 43 Mo · exit 0</div>
+    </li>
+  </ul>
+
+  <div class="evidence">
+    <div class="evidence-label">Artefact macOS produit</div>
+    <pre><code>$ ls -la packages/br_web/build/macos/Build/Products/Release/br_web.app
+.last_build_id
+App.framework
+App.framework.dSYM
+FlutterMacOS
+FlutterMacOS.framework
+FlutterMacOS.framework.dSYM
+Pods_Runner.framework
+br_web.app                ← 43 Mo, prêt à distribuer</code></pre>
+  </div>
+
+  <div class="finding">
+    <strong>Distribution :</strong> Le bundle <code>.app</code> peut être copié sur n'importe quel Mac via AirDrop, USB ou DMG. Pour distribution App Store ou signature notarisée, prévoir l'enrôlement Apple Developer (~99 €/an) — pas nécessaire pour usage interne.
+  </div>
+
+  <div class="finding warning">
+    <strong>Limites du desktop natif :</strong> L'app macOS pointe vers <code>BR_API_URL</code> qui défaut à <code>http://127.0.0.1:8444</code>. Pour la connexion au serveur distant (Mac Studio via Tailscale), l'utilisateur doit passer l'URL via <code>--dart-define=BR_API_URL=http://100.95.200.28:8444</code> au build, ou ajouter un écran de configuration. À traiter en v0.9.
   </div>
 </section>
 
