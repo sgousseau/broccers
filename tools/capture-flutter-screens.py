@@ -97,31 +97,96 @@ async def capture():
         # === STEP 3 : capture each tab via NavigationBar ===
         # Flutter's NavigationBar destinations sont des widgets — pour cliquer,
         # on cible par index visuel. NavigationBar est au bottom du viewport.
+        viewport_w = 1440
+        viewport_h = 900
+        n_tabs = len(TABS)
+        tab_w = viewport_w / n_tabs
+
         for name, idx, label in TABS:
             print(f"→ Capturing {name} (tab {idx} — {label})")
             try:
-                # NavigationBar prend toute la largeur en bas
-                # Chaque destination occupe 1/11 de la largeur
-                viewport_w = 1440
-                viewport_h = 900
-                n_tabs = len(TABS)
-                tab_w = viewport_w / n_tabs
-                # NavigationBar est ~80px de haut, on clique au milieu
                 x = (idx + 0.5) * tab_w
                 y = viewport_h - 40
-
                 await page.mouse.click(x, y)
-                await asyncio.sleep(2.5)  # attendre que l'onglet se charge
-
-                # full_page=False car Flutter Web gère son propre scroll dans canvas
-                await page.screenshot(
-                    path=str(OUT_DIR / f"{name}.png"),
-                    full_page=False,
-                )
+                await asyncio.sleep(2.5)
+                await page.screenshot(path=str(OUT_DIR / f"{name}.png"), full_page=False)
                 size = (OUT_DIR / f"{name}.png").stat().st_size
                 print(f"  ✓ {name}.png ({size} bytes)")
             except Exception as e:
                 print(f"  ✗ {name} FAILED: {e}")
+
+        # === STEP 4 : capture les sous-onglets Admin (Système + BD) ===
+        # On est déjà sur Admin (dernier de la boucle). Cliquer le tab "Système"
+        # qui est dans l'AppBar TabBar tout en haut sous le header
+        print("\n→ Capture sous-onglets Admin")
+        try:
+            # TabBar interne Admin : 3 tabs, partageant viewport_w
+            # Position approximative : y=85 (juste sous AppBar 56px + un peu)
+            tab_y = 85
+            sub_tab_w = viewport_w / 3
+            # Tab 1 = Système (index 1)
+            await page.mouse.click(sub_tab_w * 1.5, tab_y)
+            await asyncio.sleep(2)
+            await page.screenshot(path=str(OUT_DIR / "flutter_admin_system.png"))
+            print(f"  ✓ flutter_admin_system.png ({(OUT_DIR / 'flutter_admin_system.png').stat().st_size} bytes)")
+            # Tab 2 = BD (index 2)
+            await page.mouse.click(sub_tab_w * 2.5, tab_y)
+            await asyncio.sleep(2)
+            await page.screenshot(path=str(OUT_DIR / "flutter_admin_db.png"))
+            print(f"  ✓ flutter_admin_db.png ({(OUT_DIR / 'flutter_admin_db.png').stat().st_size} bytes)")
+            # Retour Feature flags
+            await page.mouse.click(sub_tab_w * 0.5, tab_y)
+            await asyncio.sleep(1)
+        except Exception as e:
+            print(f"  ✗ Admin sub-tabs FAILED: {e}")
+
+        # === STEP 5 : capture dialog "Nouvelle table" (Phase F) ===
+        print("\n→ Capture dialog Nouvelle table")
+        try:
+            # Naviguer vers Tables (idx 8)
+            await page.mouse.click((8 + 0.5) * tab_w, viewport_h - 40)
+            await asyncio.sleep(2)
+            # FAB "Nouvelle table" en bas à droite
+            await page.mouse.click(viewport_w - 130, viewport_h - 120)
+            await asyncio.sleep(1.5)
+            await page.screenshot(path=str(OUT_DIR / "flutter_dialog_new_table.png"))
+            print(f"  ✓ flutter_dialog_new_table.png ({(OUT_DIR / 'flutter_dialog_new_table.png').stat().st_size} bytes)")
+            # Cancel
+            await page.keyboard.press("Escape")
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            print(f"  ✗ Dialog new table FAILED: {e}")
+
+        # === STEP 6 : capture dialog "Déclarer perte" (Phase F) ===
+        print("\n→ Capture dialog Déclarer perte")
+        try:
+            await page.mouse.click((7 + 0.5) * tab_w, viewport_h - 40)
+            await asyncio.sleep(2)
+            await page.mouse.click(viewport_w - 130, viewport_h - 120)
+            await asyncio.sleep(1.5)
+            await page.screenshot(path=str(OUT_DIR / "flutter_dialog_waste.png"))
+            print(f"  ✓ flutter_dialog_waste.png ({(OUT_DIR / 'flutter_dialog_waste.png').stat().st_size} bytes)")
+            await page.keyboard.press("Escape")
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            print(f"  ✗ Dialog waste FAILED: {e}")
+
+        # === STEP 7 : capture vue Tables avec QR ouvert ===
+        print("\n→ Capture dialog QR code")
+        try:
+            # Tables tab (déjà visité juste avant)
+            await page.mouse.click((8 + 0.5) * tab_w, viewport_h - 40)
+            await asyncio.sleep(2)
+            # Cliquer sur l'icône QR de la première ligne (T-VERIFY)
+            # Icône QR est dans la trailing zone, vers x=1265, y~=180 pour 1ere ligne
+            await page.mouse.click(1270, 180)
+            await asyncio.sleep(1.5)
+            await page.screenshot(path=str(OUT_DIR / "flutter_dialog_qr.png"))
+            print(f"  ✓ flutter_dialog_qr.png ({(OUT_DIR / 'flutter_dialog_qr.png').stat().st_size} bytes)")
+            await page.keyboard.press("Escape")
+            await asyncio.sleep(0.5)
+        except Exception as e:
+            print(f"  ✗ Dialog QR FAILED: {e}")
 
         await browser.close()
 

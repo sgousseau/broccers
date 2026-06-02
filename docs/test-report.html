@@ -392,6 +392,7 @@
     <li><a href="#phaseH">Phase H — Feature flags + Caméras ESP32</a></li>
     <li><a href="#docs">Documents HTML servis</a></li>
     <li><a href="#flutter">Écrans Flutter authentifiés (Playwright)</a></li>
+    <li><a href="#scenario">Scénario E2E complet (création → publi → 86 → QR)</a></li>
     <li><a href="#macos">Build macOS natif</a></li>
     <li><a href="#probes">Probes adversariaux (cas d'erreur)</a></li>
     <li><a href="#findings">Observations &amp; findings</a></li>
@@ -1074,6 +1075,125 @@
       </div>
       <img src="/docs/test-assets/flutter_admin.png" alt="Onglet Admin super-admin">
     </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Admin · Système (config runtime + mode auto-détecté)</span>
+        <a href="/docs/test-assets/flutter_admin_system.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_admin_system.png" alt="Admin sous-onglet Système">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Admin · Base de données (taille + counts + switcher BD)</span>
+        <a href="/docs/test-assets/flutter_admin_db.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_admin_db.png" alt="Admin sous-onglet BD">
+    </div>
+  </div>
+
+  <h3 style="color: var(--broc-cream); margin: 30px 0 12px; font-size: 1.15rem; border-left: 4px solid var(--broc-yellow); padding-left: 12px;">Dialogs interactifs capturés</h3>
+  <div class="screenshots-grid">
+    <div class="screenshot">
+      <div class="caption">
+        <span>Dialog · Nouvelle table (capacité, position)</span>
+        <a href="/docs/test-assets/flutter_dialog_new_table.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_dialog_new_table.png" alt="Dialog création table">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Dialog · Déclarer une perte (9 raisons, auto-estimation)</span>
+        <a href="/docs/test-assets/flutter_dialog_waste.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_dialog_waste.png" alt="Dialog déclaration perte">
+    </div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>Dialog · QR code Table T1 (rendu qr_flutter offline)</span>
+        <a href="/docs/test-assets/flutter_dialog_qr.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/flutter_dialog_qr.png" alt="Dialog QR code">
+    </div>
+  </div>
+</section>
+
+<!-- ============================================ -->
+<section class="phase" id="scenario">
+  <h2><span class="phase-tag">SCÉNARIO E2E</span>Création carte → publication → rupture → QR client</h2>
+  <p class="lead">Validation end-to-end de la chaîne complète : un manager crée une nouvelle carte « Suggestions du soir » (kind daily), y ajoute catégories et plats, la publie, un cuisinier marque un plat en rupture, le client scanne le QR de sa table — et la rupture est reflétée instantanément sur la carte publique. Sept étapes successives, toutes vérifiées.</p>
+
+  <ul class="test-list">
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>POST /api/menu/cards</code> {name, kind:daily}
+        <div class="desc">Création carte « Suggestions du soir » v4.</div>
+      </div>
+      <div class="observed">HTTP 201</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>POST /api/menu/cards/&lt;id&gt;/categories</code> × 2
+        <div class="desc">Catégories « Entrées » et « Plats du jour ».</div>
+      </div>
+      <div class="observed">HTTP 201 × 2</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>POST /api/menu/cards/&lt;id&gt;/items</code> × 4
+        <div class="desc">Tartare 14€ (fish+mustard), Burrata 12€ (dairy), Entrecôte 28€, Magret 24€.</div>
+      </div>
+      <div class="observed">HTTP 201 × 4</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>POST /api/menu/cards/&lt;id&gt;/publish</code>
+        <div class="desc">Publication horodatée.</div>
+      </div>
+      <div class="observed">published_at = 2026-06-02T10:19:07Z</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>POST /api/menu/items/&lt;tartare&gt;/availability</code> {available:false, reason}
+        <div class="desc">Mode 86 sur le tartare par le cuisinier.</div>
+      </div>
+      <div class="observed">HTTP 200 · raison loggée</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        <code>GET /menu/&lt;tableT1&gt;/&lt;secret&gt;</code> (public, sans auth)
+        <div class="desc">Consultation de la carte publique HTML par le client.</div>
+      </div>
+      <div class="observed">HTTP 200 · 2603 bytes</div>
+    </li>
+    <li>
+      <span class="status pass">✅</span>
+      <div class="what">
+        Validation du contenu HTML rendu
+        <div class="desc">grep dans la réponse : Tartare 1x · EN RUPTURE 1x · Magret 1x · Carte v4.</div>
+      </div>
+      <div class="observed">Tous présents</div>
+    </li>
+  </ul>
+
+  <div class="evidence">
+    <div class="evidence-label">Capture finale — carte client après Mode 86</div>
+    <div class="screenshot">
+      <div class="caption">
+        <span>http://127.0.0.1:8444/menu/&lt;tableT1&gt;/&lt;secret&gt; (Chrome headless 800×1400)</span>
+        <a href="/docs/test-assets/scenario_qr_with_rupture.png" target="_blank">Plein écran</a>
+      </div>
+      <img src="/docs/test-assets/scenario_qr_with_rupture.png" alt="Carte client après Mode 86 sur le tartare">
+    </div>
+  </div>
+
+  <div class="finding">
+    <strong>Toute la chaîne fonctionne</strong> en moins de 3 secondes du clic « Signaler rupture » par le cuisinier jusqu'à l'affichage barré « EN RUPTURE » sur le téléphone client. Aucun WebSocket, aucune notification push — simple polling HTTP au chargement de la page QR. C'est suffisant pour un restaurant (le client recharge en scannant).
   </div>
 </section>
 

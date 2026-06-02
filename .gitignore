@@ -32,3 +32,4 @@ pdf_exports/
 bin/br_server
 packages/br_web/.metadata
 packages/br_web/test/
+dist/
